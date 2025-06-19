@@ -15,14 +15,13 @@ class ProphetModel(BaseModel):
         """
         super().__init__(config)
         self.model = Prophet(
-            # Keep only essential parameters for now
             changepoint_prior_scale=config.get('changepoint_prior_scale', 0.05),
-            # seasonality_prior_scale=config.get('seasonality_prior_scale', 10.0),
-            # holidays_prior_scale=config.get('holidays_prior_scale', 10.0),
+            seasonality_prior_scale=config.get('seasonality_prior_scale', 10.0),
+            holidays_prior_scale=config.get('holidays_prior_scale', 10.0),
             seasonality_mode=config.get('seasonality_mode', 'multiplicative'),
-            # daily_seasonality=config.get('daily_seasonality', True),
-            # weekly_seasonality=config.get('weekly_seasonality', True),
-            # yearly_seasonality=config.get('yearly_seasonality', True)
+            daily_seasonality=config.get('daily_seasonality', True),
+            weekly_seasonality=config.get('weekly_seasonality', True),
+            yearly_seasonality=config.get('yearly_seasonality', True),
         )
         
     def fit(self, data: pd.DataFrame) -> None:
@@ -62,7 +61,7 @@ class ProphetModel(BaseModel):
         future = self.model.make_future_dataframe(
             periods=horizon,
             freq=frequency,
-            include_history=False
+            include_history=True
         )
         
         # Add any additional regressors if specified

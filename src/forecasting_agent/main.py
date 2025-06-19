@@ -112,7 +112,7 @@ class ForecastingAgent:
             raise
             
     def generate_forecast(self, metrics: pd.DataFrame) -> Dict[str, Any]:
-        """Generate forecasts using the configured model.
+        """Generate cluster‑level cost forecasts by summing all OpenCost money metrics
         
         Args:
             metrics: DataFrame with historical metrics
@@ -124,23 +124,46 @@ class ForecastingAgent:
             forecasts = []
             horizon = self.config['models']['forecast_horizon']
             horizon_label = f"{horizon}d" if isinstance(horizon, int) else horizon
-            # Group by metric_name
-            grouped = metrics.groupby('metric_name')
-            
-            for metric_name, group in grouped:
-                logger.info(f"Processing metric: {metric_name}")
-                
-                # Use 'value' column for all metrics (cost is the same as value)
-                target_col = 'value'
-                
-                
-                # Prepare data for model fitting
+
+            COST_METRICS = {
+                "node_total_hourly_cost",
+                "kubecost_cluster_management_cost",
+                "kubecost_load_balancer_cost",
+            }
+
+            # Only keep cost metrics
+            cost_df = metrics[metrics["metric_name"].isin(COST_METRICS)].copy()
+
+            # Extract cluster label once for easier grouping
+            cost_df["cluster"] = cost_df["labels"].apply(lambda d: d.get("clusterName", "unknown"))
+
+            # Aggregate to *cluster‑total cost per timestamp* ---
+            #    · first, sum node/resource costs inside the same cluster
+            #    · second, pivot different metric names into the same value column, then sum -> total $
+            total_cluster_cost = (
+                cost_df
+                .groupby(["cluster", cost_df.index])["value"]
+                .sum()
+                .reset_index()
+                .rename(columns={"value": "total_cost_usd", "level_1": "timestamp"})
+            )
+            # After aggregation, we now have one series per cluster
+            grouped = total_cluster_cost.groupby("cluster")
+
+            for cluster, group in grouped:
+                cluster_name = cluster
+                logger.info(f"Processing cluster: {cluster_name}")
+                # Robustly convert index to datetime and remove timezone if present
+                ds = pd.to_datetime(group['timestamp'], errors='coerce')
+                # Only remove timezone if it exists
+                if hasattr(ds, 'dt') and getattr(ds.dt, 'tz', None) is not None:
+                    ds = ds.dt.tz_localize(None)
                 df = pd.DataFrame({
-                    'ds': group.index.tz_localize(None),  # Remove timezone info to avoid issues
-                    'y': group[target_col].values
+                    'ds': ds,
+                    'y': group['total_cost_usd'].values
                 })
                 
-                logger.info(f"Training Prophet model for {metric_name} with {len(df)} data points")
+                logger.info(f"Training Prophet model for cluster {cluster_name} with {len(df)} data points")
                 
                 # Create fresh model and fit
                 model = ProphetModel(self.config['models']['prophet'])
@@ -148,40 +171,50 @@ class ForecastingAgent:
                 
                 # Generate forecast
                 forecast = model.forecast(horizon=horizon, frequency='1D')
+        
                 
-                logger.info(f"Generated forecast for {metric_name} with {len(forecast['forecast'])} future points")
+                logger.info(f"Generated forecast for cluster {cluster_name} with {len(forecast['forecast'])} future points")
                 
                 # Use Prophet's built-in plotting
                 try:
                     # Create Prophet plot using original forecast format
-                    plot_filename = f'forecast_{metric_name.replace("/", "_").replace(":", "_")}.png'
+                    plot_filename = f'forecast_{cluster_name.replace("/", "_").replace(":", "_")}.png'
                     model.plot_forecast(forecast['prophet_forecast'], save_path=plot_filename)
                     
                     # Create components plot if there's enough data
                     if len(df) > 7:  # Need at least a week of data for seasonality
-                        components_filename = f'components_{metric_name.replace("/", "_").replace(":", "_")}.png'
+                        components_filename = f'components_{cluster_name.replace("/", "_").replace(":", "_")}.png'
                         model.plot_components(forecast['prophet_forecast'], save_path=components_filename)
                         
                 except Exception as plot_error:
-                    logger.warning(f"Could not create Prophet plot for {metric_name}: {str(plot_error)}")
+                        components_filename = f'components_{cluster_name.replace("/", "_").replace(":", "_")}.png'
                 
-                # Update Prometheus metrics
-                clusters = group['labels'].apply(lambda x: x.get('clusterName', 'unknown')).unique()
-                for cluster in clusters:
-                    # Get the last forecast values
-                    # TODO: This is Prophet's output Structure. Generalize it for any Kats models
-                    last_forecast = forecast['forecast'].iloc[-1]
-                    last_lower = forecast['lower_bound'].iloc[-1]
-                    last_upper = forecast['upper_bound'].iloc[-1]
-                    
-                    # Update cost metrics for cost-related metric names
-                    if 'cost' in metric_name.lower():
-                        FORECAST_COST.labels(cluster=cluster).set(last_forecast['value'])
-                    FORECAST_CONFIDENCE.labels(cluster=cluster, bound='upper').set(last_upper['value'])
-                    FORECAST_CONFIDENCE.labels(cluster=cluster, bound='lower').set(last_lower['value'])
+                # Ensure forecasted values are non-negative (clip to zero)
+                forecast['forecast']['value'] = forecast['forecast']['value'].clip(lower=0)
+                forecast['lower_bound']['value'] = forecast['lower_bound']['value'].clip(lower=0)
+                forecast['upper_bound']['value'] = forecast['upper_bound']['value'].clip(lower=0)
+                last_forecast = forecast['forecast'].iloc[-1]
+                point = last_forecast['value']
+                q10 = forecast['lower_bound'].iloc[-1]
+                q90 = forecast['upper_bound'].iloc[-1]
+                FORECAST_COST_USD.labels(cluster_name, horizon_label).set(point)
+                FORECAST_COST_QUANTILE.labels(cluster_name, horizon_label, "0.10").set(q10['value'])
+                FORECAST_COST_QUANTILE.labels(cluster_name, horizon_label, "0.50").set(point)
+                FORECAST_COST_QUANTILE.labels(cluster_name, horizon_label, "0.90").set(q90['value'])
+                FORECAST_POINT_TS.labels(cluster_name, horizon_label).set(last_forecast['timestamp'].timestamp())
+                
+                # Calculate and expose MAPE for the previous horizon using the model's evaluate method
+                if len(df) > horizon:
+                    try:
+                        eval_metrics = model.evaluate(df.tail(horizon), metrics=['mape'])
+                        mape = eval_metrics['mape']
+                        FORECAST_MAPE.labels(cluster_name, horizon_label).set(mape)
+                    except Exception as mape_error:
+                        logger.warning(f"Could not compute MAPE for cluster {cluster_name}: {mape_error}")
                 
                 forecasts.append({
-                    "metric_name": metric_name, 
+                    "metric_name": "total_cluster_cost_usd",
+                    "cluster_name": cluster_name,
                     "forecast": forecast,
                     "model": model
                 })
@@ -240,10 +273,10 @@ class ForecastingAgent:
             forecast = self.generate_forecast(metrics)
             
             # Generate recommendations
-            recommendations = self.generate_recommendations(metrics, forecast)
+            # recommendations = self.generate_recommendations(metrics, forecast)
             
             # Log results
-            logger.info(f"Generated {len(recommendations)} recommendations")
+            # logger.info(f"Generated {len(recommendations)} recommendations")
             
             # Wait for next iteration
             time.sleep(self.config['agent']['interval'])

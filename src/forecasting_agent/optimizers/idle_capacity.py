@@ -3,8 +3,16 @@ import pandas as pd
 import numpy as np
 from .base import BaseOptimizer
 import logging
+from prometheus_client import Gauge
 
 logger = logging.getLogger(__name__)
+
+# Prometheus metric for node idle capacity recommendations
+NODE_IDLE_CAPACITY_SAVINGS = Gauge(
+    'node_idle_capacity_potential_savings',
+    'Potential daily savings from node idle capacity optimization',
+    ['node', 'action', 'type']
+)
 
 class IdleCapacityOptimizer(BaseOptimizer):
     """Optimizer for identifying and recommending idle capacity reductions."""
@@ -320,10 +328,10 @@ class IdleCapacityOptimizer(BaseOptimizer):
         # Calculate potential savings
         max_util = max(cpu_util, mem_util)
         potential_savings = cost * (1 - max_util) * 24  # Daily savings
-        
+                
         # Calculate confidence based on utilization stability
         confidence = 1 - min(1, (cpu_std + mem_std) / 2)
-        
+                
         # Determine action based on utilization level
         if max_util < 0.3:
             action = 'remove'
@@ -331,22 +339,22 @@ class IdleCapacityOptimizer(BaseOptimizer):
             action = 'downsize'
         
         return {
-            'type': 'node_scaling',
-            'resource': 'node',
-            'node': node,
-            'current_value': {
-                'cpu_utilization': cpu_util,
-                'memory_utilization': mem_util,
+                    'type': 'node_scaling',
+                    'resource': 'node',
+                    'node': node,
+                    'current_value': {
+                        'cpu_utilization': cpu_util,
+                        'memory_utilization': mem_util,
                 'cost': cost
-            },
-            'recommended_value': {
+                    },
+                    'recommended_value': {
                 'action': action,
-                'potential_savings': potential_savings
-            },
-            'confidence': confidence,
-            'details': {
-                'cpu_std': cpu_std,
-                'mem_std': mem_std,
+                        'potential_savings': potential_savings
+                    },
+                    'confidence': confidence,
+                    'details': {
+                        'cpu_std': cpu_std,
+                        'mem_std': mem_std,
                 'lookback_days': self.lookback_days,
                 'data_points': util_data['data_points']
             }
@@ -416,4 +424,13 @@ class IdleCapacityOptimizer(BaseOptimizer):
             'min_utilization': self.idle_threshold,
             'min_savings': self.min_savings,
             'min_confidence': self.config.get('min_confidence', 0.8)
-        } 
+        }
+    
+    def expose_recommendations_metrics(self, recommendations: List[Dict[str, Any]]):
+        """Expose node idle capacity recommendations as Prometheus metrics."""
+        for rec in recommendations:
+            node = rec['node']
+            action = rec['recommended_value']['action']
+            rec_type = rec['type']
+            savings = rec['recommended_value']['potential_savings']
+            NODE_IDLE_CAPACITY_SAVINGS.labels(node=node, action=action, type=rec_type).set(savings) 

@@ -3,8 +3,8 @@ collector:
   type: prometheus
   url: http://localhost:8082
   # TODO: Can't lookback more than 2 days because of the Cluster came up 2 days ago. Fix this.
-  lookback_days: 1
-  step: "30m"
+  lookback_days: 3
+  step: "1m"
   disable_ssl: true
 
 # Model configuration
@@ -12,6 +12,7 @@ models:
   default: prophet
   forecast_horizon: 30  # Days to forecast
   prophet:
+    interval_width: 0.95 # set the uncertainty interval to 95% (the Prophet default is 80%)
     changepoint_prior_scale: 0.05
     seasonality_prior_scale: 10.0
     holidays_prior_scale: 10.0
@@ -26,9 +27,9 @@ optimizer:
   idle_threshold: 0.5  # 50% idle threshold
   min_nodes: 1
   min_savings: 100.0   # Minimum daily savings to report
-  min_confidence: 0.8  # Minimum confidence threshold
+  # min_confidence: 0.8  # Minimum confidence threshold
 
-  lookback_days: 7      # Days to analyze for optimization
+  lookback_days: 2      # Days to analyze for optimization
 
 # Metrics configuration
 metrics:

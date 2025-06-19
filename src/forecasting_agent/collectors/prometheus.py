@@ -38,9 +38,9 @@ class PrometheusCollector(BaseCollector):
         # Default metrics for cost and resource utilization
         return [
             # OpenCost metrics
-            # 'kubecost_cluster_management_cost',  # Hourly cost paid as a cluster management fee
-            # 'kubecost_load_balancer_cost',  # Hourly cost of load balancer
-            # 'kubecost_network_internet_egress_cost', # Total cost per GB of internet egress.
+            'kubecost_cluster_management_cost',  # Hourly cost paid as a cluster management fee
+            'kubecost_load_balancer_cost',  # Hourly cost of load balancer
+            'kubecost_network_internet_egress_cost', # Total cost per GB of internet egress.
             'node_total_hourly_cost', # Total node cost per hour
             # Resource utilization metrics
             'node_cpu_seconds_total',  # CPU utilization
