@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: forecasting-agent
+  namespace: kof
+  labels:
+    app: forecasting-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: forecasting-agent
+  template:
+    metadata:
+      labels:
+        app: forecasting-agent
+    spec:
+      containers:
+      - name: forecasting-agent
+        image: forecasting-agent:latest
+        imagePullPolicy: IfNotPresent
+        args:
+        - --config
+        - /app/config.yaml
+        ports:
+        - containerPort: 8000
+          name: metrics
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        volumeMounts:
+        - name: config
+          mountPath: /app/config.yaml
+          subPath: config.yaml
+      volumes:
+      - name: config
+        configMap:
+          name: forecasting-agent-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: forecasting-agent
+  namespace: kof
+  labels:
+    app: forecasting-agent
+spec:
+  ports:
+  - port: 8000
+    targetPort: metrics
+    name: metrics
+  selector:
+    app: forecasting-agent
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: forecasting-agent
+  namespace: kof
+  labels:
+    release: kof-mothership
+spec:
+  selector:
+    matchLabels:
+      app: forecasting-agent
+  endpoints:
+  - port: metrics
+    interval: 15s
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: forecasting-agent-config
+  namespace: kof
+data:
+  config.yaml: |
+    # Collector configuration
+    collector:
+      type: prometheus
+      url: http://vmselect-cluster.kof.svc.cluster.local:8481
+      lookback_days: 30
+      step: 5m
+      headers: {}
+      disable_ssl: false
+
+    # Model configuration
+    models:
+      default: prophet
+      forecast_horizon: 30
+      prophet:
+        changepoint_prior_scale: 0.05
+        seasonality_prior_scale: 10.0
+        holidays_prior_scale: 10.0
+        seasonality_mode: multiplicative
+        daily_seasonality: true
+        weekly_seasonality: true
+        yearly_seasonality: true
+        regressors: []
+
+    # Optimizer configuration
+    optimizer:
+      idle_threshold: 0.5
+      min_savings: 100.0
+      min_confidence: 0.8
+      lookback_days: 7
+
+    # Metrics configuration
+    metrics:
+      port: 8000
+      host: 0.0.0.0
+      path: /metrics
+
+    # Agent configuration
+    agent:
+      interval: 300
+      log_level: INFO 
