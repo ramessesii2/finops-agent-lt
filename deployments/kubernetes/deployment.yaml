@@ -23,7 +23,7 @@ spec:
         - --config
         - /app/config.yaml
         ports:
-        - containerPort: 8000
+        - containerPort: 8081
           name: metrics
         resources:
           requests:
@@ -50,7 +50,7 @@ metadata:
     app: forecasting-agent
 spec:
   ports:
-  - port: 8000
+  - port: 8081
     targetPort: metrics
     name: metrics
   selector:
@@ -81,7 +81,7 @@ data:
     # Collector configuration
     collector:
       type: prometheus
-      url: http://vmselect-cluster.kof.svc.cluster.local:8481
+      url: http://kof-mothership-promxy.kof.svc.cluster.local:8082
       lookback_days: 30
       step: 5m
       headers: {}
@@ -89,17 +89,16 @@ data:
 
     # Model configuration
     models:
-      default: prophet
+      type: nbeats
       forecast_horizon: 30
-      prophet:
-        changepoint_prior_scale: 0.05
-        seasonality_prior_scale: 10.0
-        holidays_prior_scale: 10.0
-        seasonality_mode: multiplicative
-        daily_seasonality: true
-        weekly_seasonality: true
-        yearly_seasonality: true
-        regressors: []
+      nbeats:
+        input_chunk_length: 168
+        output_chunk_length: 24
+        n_epochs: 50
+        activation: ReLU
+        random_state: 42
+        generic_architecture: true
+        likelihood: "QuantileRegression"
 
     # Optimizer configuration
     optimizer:
@@ -110,7 +109,7 @@ data:
 
     # Metrics configuration
     metrics:
-      port: 8000
+      port: 8081
       host: 0.0.0.0
       path: /metrics
 

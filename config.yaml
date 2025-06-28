@@ -3,16 +3,17 @@ collector:
   type: prometheus
   url: http://localhost:8082
   # TODO: Can't lookback more than 2 days because of the Cluster came up 2 days ago. Fix this.
-  lookback_days: 3
-  step: "1m"
+  lookback_days: 2
+  step: "1h"
   disable_ssl: true
 
 # Model configuration
 models:
-  default: prophet
-  forecast_horizon: 30  # Days to forecast
+  type: nbeats 
+  forecast_horizon: 30
   prophet:
-    interval_width: 0.95 # set the uncertainty interval to 95% (the Prophet default is 80%)
+    # interval_width: 0.95 # set the uncertainty interval to 95% (the Prophet default is 80%)
+    # Frequency is now inferred automatically from the data. Ensure your time series is regularly spaced.
     changepoint_prior_scale: 0.05
     seasonality_prior_scale: 10.0
     holidays_prior_scale: 10.0
@@ -21,23 +22,54 @@ models:
     weekly_seasonality: true
     yearly_seasonality: true
     regressors: []  # Optional additional regressors
+    # Prophet-specific config (empty for now, add params as needed)
+  arima:
+    # ARIMA-specific config
+  nbeats:
+    input_chunk_length: 168
+    output_chunk_length: 24
+    n_epochs: 50
+    activation: ReLU
+    random_state: 42
+    generic_architecture: true
+    likelihood: "QuantileRegression"
+    # For probabilistic forecasting, you can use 'QuantileRegression', 'Poisson', 'Gaussian', etc.
 
 # Optimizer configuration
 optimizer:
   idle_threshold: 0.5  # 50% idle threshold
   min_nodes: 1
   min_savings: 100.0   # Minimum daily savings to report
-  # min_confidence: 0.8  # Minimum confidence threshold
+  min_confidence: 0.8
 
-  lookback_days: 2      # Days to analyze for optimization
+  lookback_days: 7      # Days to analyze for optimization
 
 # Metrics configuration
 metrics:
-  port: 8001
+  port: 8081
   host: "0.0.0.0"
   path: /metrics
 
 # Agent configuration
 agent:
-  interval: 300  # 5 minutes in seconds
+  interval: 3600  # 1 hour in seconds
   log_level: INFO 
+
+# NBEATSModel parameters:
+# input_chunk_length: Number of past time steps used as input.
+# output_chunk_length: Number of future time steps predicted at once.
+# output_chunk_shift: Steps to shift the output chunk into the future (gap between input and output).
+# generic_architecture: True for generic N-BEATS, False for interpretable (trend/seasonality) stacks.
+# num_stacks: Number of stacks in the model (only for generic_architecture=True).
+# num_blocks: Number of blocks per stack.
+# num_layers: Number of fully connected layers per block.
+# layer_widths: Width of each FC layer (int or list of ints, one per stack).
+# expansion_coefficient_dim: Dimensionality of expansion coefficients (generic only).
+# trend_polynomial_degree: Degree of polynomial for trend stack (interpretable only).
+# dropout: Dropout probability in FC layers.
+# activation: Activation function (e.g., 'ReLU', 'LeakyReLU', 'Tanh', etc.).
+# n_epochs: Number of training epochs.
+# random_state: Random seed for reproducibility.
+# likelihood: For probabilistic forecasting (e.g., 'QuantileRegression', 'Poisson', 'Gaussian').
+#
+# See: https://unit8co.github.io/darts/generated_api/darts.models.forecasting.nbeats.html#darts.models.forecasting.nbeats.NBEATSModel 

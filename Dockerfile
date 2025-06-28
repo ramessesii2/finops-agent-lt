@@ -1,28 +1,21 @@
-# Use Python 3.9 slim image
-FROM python:3.9-slim
+# Forecasting Agent Dockerfile
+FROM python:3.10-slim
 
-# Set working directory
+# Install build tools & git (for darts dependency that compiles lightgbm etc.)
+RUN apt-get update && apt-get install -y build-essential git && rm -rf /var/lib/apt/lists/*
+
+# Set workdir
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
+# Copy project files
+COPY . /app
 
-# Copy requirements first to leverage Docker cache
-COPY requirements.txt .
+# Install PDM to resolve project deps defined in pyproject.toml
+RUN pip install --no-cache-dir pdm && \
+    pdm install --prod --no-editable --no-lock
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Expose forecast API/metrics port
+EXPOSE 8081
 
-# Copy application code
-COPY . .
-
-# Create non-root user
-RUN useradd -m -u 1000 appuser && \
-    chown -R appuser:appuser /app
-USER appuser
-
-# Run the application
-ENTRYPOINT ["python", "-m", "forecasting_agent.main"]
-CMD ["--config", "/app/config.yaml"] 
+# Entrypoint
+CMD ["python", "-m", "forecasting_agent.main", "--config", "/app/config.yaml"]

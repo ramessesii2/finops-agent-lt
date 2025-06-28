@@ -6,19 +6,26 @@ build-backend = "pdm.backend"
 name = "forecasting-agent"
 version = "0.1.0"
 description = "A forecasting agent for cost optimization"
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 dependencies = [
     "pandas",
+    "numpy>=1.21",
     "prometheus-api-client",
-    "prophet",
+    "prometheus-client",
+    "darts",
+    "pyyaml",
+    "matplotlib",
     "plotly",
-    "prometheus-client"
 ]
-
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.4.1",
 ]
+
 [tool.pdm]
 distribution = false
+
+[tool.poetry.dependencies]
+fastapi = "^0.110.0"
+uvicorn = "^0.29.0"

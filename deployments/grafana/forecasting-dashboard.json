@@ -1,0 +1,65 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_FORECAST_JSON",
+      "label": "Forecast JSON API",
+      "description": "JSON API datasource pointing to forecasting-agent service",
+      "type": "datasource",
+      "pluginId": "marcusolsson-json-datasource",
+      "pluginName": "JSON API"
+    }
+  ],
+  "uid": "forecasting-agent-dashboard",
+  "title": "Forecasting Agent - Cost Forecast",
+  "timezone": "browser",
+  "schemaVersion": 37,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Cost USD Forecast (q0.10)",
+      "datasource": "${DS_FORECAST_JSON}",
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "method": "GET",
+          "url": "/metrics/{{cluster}}",
+          "headers": [],
+          "params": [],
+          "data": "$.cost_usd.q0.10[*]",
+          "transformations": [
+            {
+              "type": "json",
+              "options": {
+                "root_is_not_array": true
+              }
+            }
+          ],
+          "columns": [
+            {"text": "ds", "type": "time"},
+            {"text": "y", "type": "number"}
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      }
+    }
+  ]
+}
