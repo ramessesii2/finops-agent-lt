@@ -26,7 +26,8 @@ models:
   arima:
     # ARIMA-specific config
   nbeats:
-    input_chunk_length: 168
+    freq: "h"
+    input_chunk_length: 24
     output_chunk_length: 24
     n_epochs: 50
     activation: ReLU

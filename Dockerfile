@@ -7,6 +7,9 @@ RUN apt-get update && apt-get install -y build-essential git && rm -rf /var/lib/
 # Set workdir
 WORKDIR /app
 
+# Ensure Python can locate local src package
+ENV PYTHONPATH="/app/src:${PYTHONPATH}"
+
 # Copy project files
 COPY . /app
 
@@ -18,4 +21,4 @@ RUN pip install --no-cache-dir pdm && \
 EXPOSE 8081
 
 # Entrypoint
-CMD ["python", "-m", "forecasting_agent.main", "--config", "/app/config.yaml"]
+CMD ["pdm", "run", "python", "-m", "forecasting_agent.main", "--config", "/app/config.yaml"]

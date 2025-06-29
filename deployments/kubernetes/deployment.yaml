@@ -6,7 +6,6 @@ metadata:
   labels:
     app: forecasting-agent
 spec:
-  replicas: 1
   selector:
     matchLabels:
       app: forecasting-agent
@@ -17,11 +16,8 @@ spec:
     spec:
       containers:
       - name: forecasting-agent
-        image: forecasting-agent:latest
-        imagePullPolicy: IfNotPresent
-        args:
-        - --config
-        - /app/config.yaml
+        image: ramessesii/forecasting-agent:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 8081
           name: metrics
@@ -81,18 +77,19 @@ data:
     # Collector configuration
     collector:
       type: prometheus
-      url: http://kof-mothership-promxy.kof.svc.cluster.local:8082
-      lookback_days: 30
-      step: 5m
+      url: http://kof-mothership-promxy:8082
+      lookback_days: 2
+      step: "1h"
       headers: {}
-      disable_ssl: false
+      disable_ssl: true
 
     # Model configuration
     models:
       type: nbeats
       forecast_horizon: 30
       nbeats:
-        input_chunk_length: 168
+        freq: "h"
+        input_chunk_length: 24
         output_chunk_length: 24
         n_epochs: 50
         activation: ReLU

@@ -6,11 +6,8 @@ from datetime import datetime, timedelta
 import pandas as pd
 import time
 import numpy as np
-from prometheus_client import start_http_server, Gauge, Counter
 from darts import TimeSeries
 from darts.dataprocessing.transformers import MissingValuesFiller
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 import json
 from threading import Thread
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -81,6 +78,52 @@ def _start_forecast_server(host: str, port: int):
     thread.start()
     logger.info(f"Forecast HTTP server running on {host}:{port}")
 
+def plot_all_forecasts(cluster_timeseries, exported_forecasts):
+    """Plot all clusters' forecasts (history + forecast) for each component."""
+    import matplotlib.pyplot as plt
+    import matplotlib.dates as mdates
+    from darts import TimeSeries
+    import pandas as pd
+
+    for cluster, ts in cluster_timeseries.items():
+        forecast = exported_forecasts.get(cluster)
+        if not forecast:
+            continue
+        # Plot the forecast (median) for each component
+        # Reconstruct a Darts TimeSeries for the median forecast
+        median_dict = {}
+        for comp, quantile_dict in forecast.items():
+            median_points = quantile_dict.get("q0.50") or quantile_dict.get("q0.5")
+            if median_points:
+                df = pd.DataFrame(median_points)
+                df["ds"] = pd.to_datetime(df["ds"])
+                # Use DatetimeIndex for times
+                median_dict[comp] = TimeSeries.from_times_and_values(pd.DatetimeIndex(df["ds"]), df["y"].to_numpy(), columns=[comp])
+        if median_dict:
+            # Combine all median component series into one multivariate TimeSeries
+            median_ts = TimeSeries.from_dataframe(
+                pd.concat([s.to_dataframe() for s in median_dict.values()], axis=1)
+            )
+            for comp in ts.components:
+                plt.figure(figsize=(12, 5))
+                hist_df = ts[comp].to_dataframe().reset_index()
+                fcst_df = median_ts[comp].to_dataframe().reset_index()
+                time_col = hist_df.columns[0]
+                plt.plot(hist_df[time_col], hist_df[comp], label="History", lw=2)
+                plt.plot(fcst_df[time_col], fcst_df[comp], label="Forecast", lw=2, linestyle="--")
+                forecast_start = hist_df[time_col].iloc[-1]
+                axv = mdates.date2num(pd.Timestamp(forecast_start))
+                if hasattr(axv, 'item'):
+                    axv = float(axv.item())
+                else:
+                    axv = float(axv)
+                plt.axvline(axv, color="k", linestyle=":", label="Forecast Start")
+                plt.title(f"{comp} - Full Horizon Forecast for {cluster}")
+                plt.xlabel("Time")
+                plt.ylabel(comp)
+                plt.legend()
+                plt.tight_layout()
+                plt.show()
 
 class ForecastingAgent:
     """Main forecasting agent class."""
@@ -106,7 +149,7 @@ class ForecastingAgent:
             # Get raw results from PrometheusCollector
             results = self.collector.collect_metrics_timeseries(start_time, end_time, PROMQL)
             # Convert to per-cluster TimeSeries
-            return PrometheusTimeseriesAdapter.prometheus_results_to_timeseries(results, "h")
+            return PrometheusTimeseriesAdapter.prometheus_results_to_timeseries(results, freq=self.config['models']['nbeats'].get('freq', "h"))
         except Exception as e:
             logger.error(f"Error collecting metrics: {str(e)}")
             # COLLECTION_ERRORS.labels(collector=self.collector.__class__.__name__).inc()
@@ -193,70 +236,24 @@ class ForecastingAgent:
             logger.error(f"Error generating forecast: {str(e)}")
             raise
 
-    def plot_forecast(self, series: "TimeSeries", forecast: "TimeSeries", cluster: str = "", median: bool = True):
-        """
-        Plot historic and forecasted values for each component in a Darts TimeSeries.
-        Shows a vertical line at the forecast start and plots the full horizon (history + forecast).
-        """
-        if median and hasattr(forecast, 'quantile_timeseries'):
-            forecast = forecast.quantile_timeseries(0.5)
-        for comp in series.components:
-            plt.figure(figsize=(12, 5))
-            # Get history and forecast as DataFrames
-            hist_df = series[comp].to_dataframe().reset_index()
-            fcst_df = forecast[comp].to_dataframe().reset_index()
-            # Dynamically detect the time column
-            time_col = hist_df.columns[0]
-            # Plot history
-            plt.plot(hist_df[time_col], hist_df[comp], label="History", lw=2)
-            # Plot forecast
-            plt.plot(fcst_df[time_col], fcst_df[comp], label="Forecast", lw=2, linestyle="--")
-            # Mark forecast start
-            forecast_start = hist_df[time_col].iloc[-1]
-            axv = mdates.date2num(pd.Timestamp(forecast_start))
-            if hasattr(axv, 'item'):
-                axv = float(axv.item())
-            else:
-                axv = float(axv)
-            plt.axvline(axv, color="k", linestyle=":", label="Forecast Start")
-            plt.title(f"{comp} - Full Horizon Forecast for {cluster}")
-            plt.xlabel("Time")
-            plt.ylabel(comp)
-            plt.legend()
-            plt.tight_layout()
-            plt.show()
-
     def run(self):
+        """Run the forecasting agent."""
         global exported_forecasts
         # start forecast JSON server (once)
         metrics_conf = self.config['metrics']
         api_port = metrics_conf.get('forecast_api_port', metrics_conf['port'])
         api_host = metrics_conf.get('forecast_api_host', metrics_conf.get('host', '0.0.0.0'))
         _start_forecast_server(api_host, api_port)
-
         try:
             cluster_timeseries = self.collect_metrics_timeseries()
             # Generate forecast for each cluster
             for cluster, ts in cluster_timeseries.items():
                 forecast = self.generate_forecast_NBEATS(ts)
                 exported_forecasts[cluster] = forecast
-                # Plot the forecast (median) for each component
-                # Reconstruct a Darts TimeSeries for the median forecast
-                median_dict = {}
-                for comp, quantile_dict in forecast.items():
-                    median_points = quantile_dict.get("q0.50") or quantile_dict.get("q0.5")
-                    if median_points:
-                        df = pd.DataFrame(median_points)
-                        df["ds"] = pd.to_datetime(df["ds"])
-                        # Use DatetimeIndex for times
-                        median_dict[comp] = TimeSeries.from_times_and_values(pd.DatetimeIndex(df["ds"]), df["y"].to_numpy(), columns=[comp])
-                if median_dict:
-                    # Combine all median component series into one multivariate TimeSeries
-                    median_ts = TimeSeries.from_dataframe(
-                        pd.concat([s.to_dataframe() for s in median_dict.values()], axis=1)
-                    )
-                    self.plot_forecast(ts, median_ts, cluster=cluster, median=False)
-            # Wait for next iteration
+            api_url = f"http://{api_host}:{api_port}/metrics/{{clustername}}"
+            logger.info(f"Forecast metrics are now ready to be ingested via the API at {api_url}")
+            # To plot all forecasts, uncomment the following line:
+            # plot_all_forecasts(cluster_timeseries, exported_forecasts)
             time.sleep(self.config['agent']['interval'])
         except Exception as e:
             logger.error(f"Error in main loop: {str(e)}")

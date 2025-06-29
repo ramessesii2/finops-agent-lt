@@ -6,13 +6,14 @@ build-backend = "pdm.backend"
 name = "forecasting-agent"
 version = "0.1.0"
 description = "A forecasting agent for cost optimization"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 dependencies = [
     "pandas",
-    "numpy>=1.21",
+    "numpy",
     "prometheus-api-client",
     "prometheus-client",
-    "darts",
+    "darts==0.34.0",
+    "scipy<1.16",
     "pyyaml",
     "matplotlib",
     "plotly",
@@ -20,7 +21,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.4.1",
+    "pytest",
 ]
 
 [tool.pdm]
