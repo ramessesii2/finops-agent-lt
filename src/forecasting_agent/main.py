@@ -2,7 +2,7 @@ import asyncio
 import logging
 from typing import Dict, Any, Optional, List
 import yaml
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import pandas as pd
 import time
 import numpy as np
@@ -58,14 +58,15 @@ def _start_forecast_server(host: str, port: int):
             self.wfile.write(body)
 
         def do_GET(self):
-            if self.path.startswith("/metrics/"):
+            if self.path == "/metrics" or self.path == "/metrics/":
+                # list clusters
+                self._send_json({"clusters": list(exported_forecasts.keys())})
+            elif self.path.startswith("/metrics/"):
                 cluster = self.path[len("/metrics/"):]
-                if cluster in exported_forecasts:
+                if cluster in exported_forecasts and cluster:
                     self._send_json(exported_forecasts[cluster])
                 else:
                     self._send_json({"error": "cluster not found"}, status=404)
-            elif self.path == "/metrics" or self.path == "/metrics/":
-                self._send_json({"clusters": list(exported_forecasts.keys())})
             else:
                self._send_json({"message": "OK"})
 
@@ -144,8 +145,12 @@ class ForecastingAgent:
 
     def collect_metrics_timeseries(self) -> Dict[str, TimeSeries]:
         try:
-            end_time = datetime.now()
-            start_time = end_time - timedelta(days=self.config['collector']['lookback_days'])
+            end_time = datetime.now(tz=timezone.utc)
+            # Add extra window (scrape interval) so rate[...] has warm-up samples
+            scrape_step = self.config['collector'].get('step', '5m')
+            step_minutes = int(scrape_step.rstrip('m')) if scrape_step.endswith('m') else 5
+            pad = timedelta(minutes=max(5, step_minutes))
+            start_time = end_time - timedelta(days=self.config['collector'].get('lookback_days', 4)) - pad
             # Get raw results from PrometheusCollector
             results = self.collector.collect_metrics_timeseries(start_time, end_time, PROMQL)
             # Convert to per-cluster TimeSeries

@@ -10,7 +10,7 @@ collector:
 # Model configuration
 models:
   type: nbeats 
-  forecast_horizon: 30
+  forecast_horizon: 30 # number of days ahead in future
   prophet:
     # interval_width: 0.95 # set the uncertainty interval to 95% (the Prophet default is 80%)
     # Frequency is now inferred automatically from the data. Ensure your time series is regularly spaced.

@@ -5,8 +5,8 @@
       "label": "Forecast JSON API",
       "description": "JSON API datasource pointing to forecasting-agent service",
       "type": "datasource",
-      "pluginId": "marcusolsson-json-datasource",
-      "pluginName": "JSON API"
+      "pluginId": "yesoreyeram-infinity-datasource",
+      "pluginName": "Infinity"
     }
   ],
   "uid": "forecasting-agent-dashboard",
@@ -15,6 +15,23 @@
   "schemaVersion": 37,
   "version": 1,
   "refresh": "30s",
+  "templating": {
+    "list": [
+      {
+        "name": "cluster",
+        "type": "query",
+        "datasource": "${DS_FORECAST_JSON}",
+        "source": "url",
+        "url": "/metrics",
+        "method": "GET",
+        "format": "json",
+        "root_selector": "$.clusters[*]",
+        "refresh": 1,
+        "includeAll": false,
+        "sort": 1
+      }
+    ]
+  },
   "panels": [
     {
       "type": "timeseries",
@@ -60,6 +77,81 @@
         "x": 0,
         "y": 0
       }
+    },
+    {
+      "type": "timeseries",
+      "title": "Cost USD Forecast (q0.50)",
+      "datasource": "${DS_FORECAST_JSON}",
+      "targets": [
+        {
+          "refId": "B",
+          "format": "table",
+          "method": "GET",
+          "url": "/metrics/{{cluster}}",
+          "headers": [],
+          "params": [],
+          "data": "$.cost_usd.q0.50[*]",
+          "transformations": [
+            {"type": "json", "options": {"root_is_not_array": true}}
+          ],
+          "columns": [
+            {"text": "ds", "type": "time"},
+            {"text": "y", "type": "number"}
+          ]
+        }
+      ],
+      "fieldConfig": {"defaults": {"unit": "currencyUSD"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 8}
+    },
+    {
+      "type": "timeseries",
+      "title": "CPU % Forecast (q0.50)",
+      "datasource": "${DS_FORECAST_JSON}",
+      "targets": [
+        {
+          "refId": "C",
+          "format": "table",
+          "method": "GET",
+          "url": "/metrics/{{cluster}}",
+          "headers": [],
+          "params": [],
+          "data": "$.cpu_pct.q0.50[*]",
+          "transformations": [
+            {"type": "json", "options": {"root_is_not_array": true}}
+          ],
+          "columns": [
+            {"text": "ds", "type": "time"},
+            {"text": "y", "type": "number"}
+          ]
+        }
+      ],
+      "fieldConfig": {"defaults": {"unit": "percent"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 16}
+    },
+    {
+      "type": "timeseries",
+      "title": "Memory % Forecast (q0.50)",
+      "datasource": "${DS_FORECAST_JSON}",
+      "targets": [
+        {
+          "refId": "D",
+          "format": "table",
+          "method": "GET",
+          "url": "/metrics/{{cluster}}",
+          "headers": [],
+          "params": [],
+          "data": "$.mem_pct.q0.50[*]",
+          "transformations": [
+            {"type": "json", "options": {"root_is_not_array": true}}
+          ],
+          "columns": [
+            {"text": "ds", "type": "time"},
+            {"text": "y", "type": "number"}
+          ]
+        }
+      ],
+      "fieldConfig": {"defaults": {"unit": "percent"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 24}
     }
   ]
 }

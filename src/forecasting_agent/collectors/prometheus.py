@@ -1,8 +1,5 @@
 from typing import Dict, Any, List, Optional
-import pandas as pd
-from darts import TimeSeries
-from datetime import datetime, timedelta
-from prometheus_api_client.utils import parse_datetime
+from datetime import datetime
 from prometheus_api_client import PrometheusConnect
 import logging
 
@@ -59,16 +56,14 @@ class PrometheusCollector:
         for metric_key, promql in promq.items():
             try:
                 raw_result = self._prom_query(promql, start_time, end_time)
-                # Store the raw result directly; no transformation here so that
-                # callers can choose how to handle the data (e.g. convert to
-                # DataFrame/TimeSeries later).
                 results[metric_key] = raw_result
             except Exception as e:
                 logger.error(f"Error collecting metric '{metric_key}': {e}")
                 continue
 
-        if not results:
-            raise ValueError("No metrics data collected.")
+        # If every metric returned an empty result set treat it as a failure
+        if not results or all(len(v) == 0 for v in results.values()):
+            raise ValueError("No metrics data collected from Prometheus.")
 
         # Record timestamp of successful collection for health_check()
         self.last_collection = datetime.now()
