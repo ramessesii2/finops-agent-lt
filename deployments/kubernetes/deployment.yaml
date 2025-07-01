@@ -52,21 +52,6 @@ spec:
   selector:
     app: forecasting-agent
 ---
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: forecasting-agent
-  namespace: kof
-  labels:
-    release: kof-mothership
-spec:
-  selector:
-    matchLabels:
-      app: forecasting-agent
-  endpoints:
-  - port: metrics
-    interval: 15s
----
 apiVersion: v1
 kind: ConfigMap
 metadata:
