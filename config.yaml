@@ -9,7 +9,8 @@ collector:
 
 # Model configuration
 models:
-  type: toto 
+  type: toto
+  freq: "h" 
   forecast_horizon: 7 # number of days ahead in future
   quantiles: [0.1, 0.5, 0.9]
   prophet:
@@ -27,7 +28,6 @@ models:
   arima:
     # ARIMA-specific config
   nbeats:
-    freq: "h"
     input_chunk_length: 24
     output_chunk_length: 24
     n_epochs: 50

@@ -140,7 +140,8 @@ class ForecastingAgent:
     def _init_optimizer(self) -> IdleCapacityOptimizer:
         return IdleCapacityOptimizer(self.config['optimizer'])
 
-    def collect_metrics_timeseries(self) -> Dict[str, TimeSeries]:
+    def collect_raw_metrics(self) -> Dict[str, Any]:
+        """Collect raw metrics from Prometheus."""
         try:
             end_time = datetime.now(tz=timezone.utc)
             # Add extra window (scrape interval) so rate[...] has warm-up samples
@@ -149,13 +150,24 @@ class ForecastingAgent:
             pad = timedelta(minutes=max(5, step_minutes))
             start_time = end_time - timedelta(days=self.config['collector'].get('lookback_days', 4)) - pad
             # Get raw results from PrometheusCollector
-            results = self.collector.collect_metrics_timeseries(start_time, end_time, PROMQL)
-            # Convert to per-cluster TimeSeries
-            return PrometheusTimeseriesAdapter.prometheus_results_to_timeseries(results, freq=self.config['models']['nbeats'].get('freq', "h"))
+            return self.collector.collect_metrics_timeseries(start_time, end_time, PROMQL)
         except Exception as e:
-            logger.error(f"Error collecting metrics: {str(e)}")
-            # COLLECTION_ERRORS.labels(collector=self.collector.__class__.__name__).inc()
+            logger.error(f"Error collecting raw metrics: {str(e)}")
             raise
+    
+    def convert_to_timeseries(self, raw_results: Dict[str, Any]) -> Dict[str, TimeSeries]:
+        """Convert raw Prometheus results to per-cluster TimeSeries."""
+        try:
+            freq = self.config['models'].get('freq', "h")
+            return PrometheusTimeseriesAdapter.prometheus_results_to_timeseries(raw_results, freq=freq)
+        except Exception as e:
+            logger.error(f"Error converting to timeseries: {str(e)}")
+            raise
+    
+    def collect_metrics_timeseries(self) -> Dict[str, TimeSeries]:
+        """Collect metrics and convert to TimeSeries (convenience method)."""
+        raw_results = self.collect_raw_metrics()
+        return self.convert_to_timeseries(raw_results)
 
     def generate_forecast_NBEATS(self, series: TimeSeries) -> dict:
         """Generate NBEATS forecast with horizon calculation and JSON formatting."""
@@ -205,7 +217,6 @@ class ForecastingAgent:
     def run(self):
         """Run the forecasting agent continuously."""
         global exported_forecasts
-        # start forecast JSON server (once)
         metrics_conf = self.config['metrics']
         api_port = metrics_conf.get('forecast_api_port', metrics_conf['port'])
         api_host = metrics_conf.get('forecast_api_host', metrics_conf.get('host', '0.0.0.0'))
@@ -213,6 +224,14 @@ class ForecastingAgent:
         
         while True:
             try:
+                # Check Prometheus health before collecting metrics
+                health = self.collector.health_check()
+                if "unhealthy" in health["status"]:
+                    logger.warning(f"Prometheus collector health check failed: {health['status']}")
+                    logger.info("Retrying in 60 seconds...")
+                    time.sleep(60)
+                    continue
+                
                 logger.info("Collecting metrics and generating forecasts...")
                 cluster_timeseries = self.collect_metrics_timeseries()
                 # Generate forecast for each cluster

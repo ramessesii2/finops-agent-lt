@@ -1,5 +1,5 @@
 from typing import Dict, Any, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from prometheus_api_client import PrometheusConnect
 import logging
 
@@ -30,10 +30,12 @@ class PrometheusCollector:
     def _prom_query(self, promql: str, start_time: datetime, end_time: datetime):
         """Run a range query and return the raw Prometheus response list."""
         logger.debug("PromQL query: %s", promql)
+        start = start_time.astimezone(timezone.utc).replace(tzinfo=None)
+        end   = end_time.astimezone(timezone.utc).replace(tzinfo=None)
         return self.prom.custom_query_range(
             query=promql,
-            start_time=start_time,
-            end_time=end_time,
+            start_time=start,
+            end_time=end,
             step=self.config.get("step", "1m"),
         )
 
@@ -75,16 +77,14 @@ class PrometheusCollector:
         Returns:
             List of available metric names
         """
-        if self._available_metrics is None:
-            try:
-                # Query Prometheus for all available metrics
-                result = self.prom.all_metrics()
-                self._available_metrics = result
-            except Exception as e:
-                print(f"Error getting available metrics: {str(e)}")
-                self._available_metrics = []
+        metrics = []
+        try:
+            # Query Prometheus for all available metrics
+            metrics = self.prom.all_metrics()
+        except Exception as e:
+            print(f"Error getting available metrics: {str(e)}")
                 
-        return self._available_metrics
+        return metrics
     
     def health_check(self) -> Dict[str, Any]:
         """Check Prometheus collector health.
@@ -102,6 +102,5 @@ class PrometheusCollector:
         return {
             "status": status,
             "last_collection": self.last_collection,
-            "available_metrics": len(self.get_available_metrics()),
             "prometheus_url": self.config['url']
         } 
