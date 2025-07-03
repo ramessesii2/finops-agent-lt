@@ -1,159 +1,248 @@
-# forecasting-agent
-A modular FinOps agent that ingests cost-and-utilization metrics from any Prometheus-compatible endpoint, applies pluggable short-term time-series forecasting models (Kats-Prophet, Datadog Toto, NVIDIA Tesseract), estimates idle-capacity savings, and exports forecasts and optimization hints as Prometheus metrics and JSON for easy dashboarding in Grafana or similar tools
+# Forecasting Agent
+
+FinOps forecasting agent that continuously ingests cost and utilization metrics from Prometheus, applies advanced time-series forecasting models (NBEATS, Datadog TOTO), and provides accurate predictions with built-in validation and monitoring capabilities.
+
+## ✨ Key Features
+
+- **🔄 Continuous Operation**: Runs as a service with configurable collection intervals
+- **🤖 Multiple Models**: Support for NBEATS and Datadog's TOTO zero-shot forecasting
+- **📊 Built-in Validation**: 70/30 train/test split with MAPE, MAE, RMSE accuracy metrics
+- **🔍 Health Monitoring**: Prometheus connectivity checks and graceful error handling
+- **🌐 HTTP API**: RESTful endpoints for forecast data and cluster metrics
+- **⚙️ Configurable**: YAML-based configuration for all components
+- **🚀 Cloud-Native**: Kubernetes-ready with Docker deployment support
 
 ## Architecture
 
 ![Architecture](./docs/architecture.png)
 
-## Project Structure
+## 🏗️ Project Structure
 
 ```
 forecasting-agent/
 ├── src/
-│   ├── forecasting_agent/
-│   │   ├── __init__.py
-│   │   ├── main.py                 # Application entry point
-│   │   ├── config.py              # Configuration management
-│   │   ├── api/
-│   │   │   ├── __init__.py
-│   │   │   ├── metrics.py         # Prometheus metrics endpoints
-│   │   │   ├── recommendations.py # JSON recommendations endpoint
-│   │   │   └── health.py          # Health check endpoints
-│   │   ├── collectors/
-│   │   │   ├── __init__.py
-│   │   │   ├── base.py           # Base collector interface
-│   │   │   └── prometheus.py     # Prometheus metrics collector
-│   │   ├── models/
-│   │   │   ├── __init__.py
-│   │   │   ├── base.py          # Base model interface
-│   │   │   ├── prophet.py       # Prophet implementation
-│   │   │   ├── toto.py         # Datadog Toto implementation
-│   │   │   └── tesseract.py    # NVIDIA Tesseract implementation
-│   │   ├── optimizers/
-│   │   │   ├── __init__.py
-│   │   │   ├── base.py         # Base optimizer interface
-│   │   │   └── idle_capacity.py # Idle capacity optimization
-│   │   └── utils/
-│   │       ├── __init__.py
-│   │       ├── metrics.py       # Metric processing utilities
-│   │       └── validation.py    # Data validation utilities
+│   └── forecasting_agent/
+│       ├── main.py                    # Main application entry point
+│       ├── collectors/
+│       │   └── prometheus.py          # Prometheus metrics collector
+│       ├── adapters/
+│       │   ├── forecasting/
+│       │   │   ├── nbeats_adapter.py  # NBEATS forecasting model
+│       │   │   ├── toto_adapter.py    # Datadog TOTO zero-shot model
+│       │   │   └── prophet_adapter.py # Prophet forecasting model
+│       │   └── prometheus_timeseries_adapter.py # Data conversion utilities
+│       ├── validation/
+│       │   └── forecast_validator.py  # Model accuracy validation
+│       └── optimizers/
+│           └── idle_capacity.py       # Cost optimization logic
+├── toto/                              # Datadog TOTO model (git submodule)
 ├── tests/
-│   ├── __init__.py
-│   ├── test_collectors/
-│   ├── test_models/
-│   └── test_optimizers/
-├── docs/
-│   ├── architecture.png
-│   └── development.md
-├── deployments/
-│   ├── kubernetes/
-│   │   ├── deployment.yaml
-│   │   ├── service.yaml
-│   │   └── servicemonitor.yaml
-│   └── docker/
-│       └── Dockerfile
-├── pyproject.toml
-└── README.md
+│   └── test_toto_adapter.py          # Unit tests
+├── config.yaml                        # Main configuration file
+├── pyproject.toml                     # Python dependencies
+└── deployments/
+    └── kubernetes/
+        └── deployment.yaml            # Kubernetes deployment
 ```
 
-## Features
+## 🚀 Quick Start
 
-- Ingest cost-and-utilization metrics from any Prometheus-compatible endpoint
-- Apply pluggable short-term time-series forecasting models (Kats-Prophet, Datadog Toto, NVIDIA Tesseract)
-- Estimate idle-capacity savings
-- Export forecasts and optimization hints as Prometheus metrics and JSON for easy dashboarding in Grafana or similar tools
+### Prerequisites
+- Python 3.10+
+- Prometheus server with cost/utilization metrics
+- (Optional) CUDA-compatible GPU for TOTO model
 
-## Installation
+### Installation
 
 ```bash
-# Create and activate virtual environment
+# Clone the repository
+git clone <repository-url>
+cd forecasting-agent
+
+# Create virtual environment
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
 # Install dependencies
+pdm install
+# OR using pip:
 pip install -e .
+
+# Install TOTO model (optional)
+git submodule update --init --recursive
 ```
 
-## Configuration
+### Basic Usage
 
-The agent can be configured using environment variables or a configuration file:
+```bash
+# Configure your Prometheus endpoint in config.yaml
+# Then run the agent
+python -m forecasting_agent.main config.yaml
+```
+
+The agent will:
+1. 🔄 Continuously collect metrics from Prometheus
+2. 🤖 Generate forecasts using your chosen model
+3. 📊 Validate accuracy using train/test splits
+4. 🌐 Serve results via HTTP API at `http://localhost:8081`
+
+## ⚙️ Configuration
+
+The agent is configured via `config.yaml`. Here's the current configuration structure:
 
 ```yaml
-# config.yaml
+# Prometheus data source
 collector:
   type: prometheus
-  url: http://prometheus:9090
-  scrape_interval: 300  # 5 minutes
+  url: http://localhost:8082
+  lookback_days: 2
+  step: "1h"
+  disable_ssl: true
 
+# Model selection and parameters
 models:
-  default: prophet
-  prophet:
-    changepoint_prior_scale: 0.05
+  type: toto  # or 'nbeats'
+  freq: "h"
+  forecast_horizon: 7  # days
+  quantiles: [0.1, 0.5, 0.9]
+  
+  # NBEATS-specific settings
+  nbeats:
+    input_chunk_length: 24
+    output_chunk_length: 24
+    n_epochs: 50
+    
+  # TOTO-specific settings
   toto:
-    confidence_interval: 0.95
-  tesseract:
-    gpu_enabled: true
+    checkpoint: Datadog/Toto-Open-Base-1.0
+    device: cpu  # or cuda
+    context_length: 4096
+    num_samples: 256
 
-optimizer:
-  idle_threshold: 0.5  # 50% utilization threshold
-  min_savings_threshold: 100  # Minimum daily savings to report
+# Validation settings
+validation:
+  enabled: true
+  interval_cycles: 2  # Run validation every 2 forecast cycles
+  train_ratio: 0.7    # 70% training, 30% testing
 
+# Agent runtime settings
+agent:
+  interval: 300  # seconds between forecast updates
+
+# HTTP API settings
 metrics:
-  port: 8000
-  path: /metrics
+  host: 0.0.0.0
+  port: 8081
 ```
 
-## Development
+## 🔌 API Endpoints
 
-### Adding a New Forecasting Model
+The agent exposes the following HTTP endpoints:
 
-1. Create a new model class in `src/forecasting_agent/models/`
-2. Implement the `BaseModel` interface
-3. Register the model in the model factory
+### Forecast Data
+- **`GET /metrics/{cluster_name}`** - Get forecast JSON for a specific cluster
+  ```json
+  {
+    "cost_usd": {
+      "q0.10": [{"x": "2024-01-01T00:00:00Z", "y": 1.23}],
+      "q0.50": [{"x": "2024-01-01T00:00:00Z", "y": 1.45}],
+      "q0.90": [{"x": "2024-01-01T00:00:00Z", "y": 1.67}]
+    },
+    "cpu_pct": { /* similar structure */ },
+    "mem_pct": { /* similar structure */ }
+  }
+  ```
 
-Example:
-```python
-from forecasting_agent.models.base import BaseModel
+### Cluster List
+- **`GET /metrics`** - List available clusters
+  ```json
+  {"clusters": ["production", "staging"]}
+  ```
 
-class CustomModel(BaseModel):
-    def __init__(self, config):
-        super().__init__(config)
-        
-    def forecast(self, data):
-        # Implement forecasting logic
-        pass
+## 🤖 Supported Models
+
+### NBEATS (Neural Basis Expansion Analysis)
+- **Type**: Deep learning model for time series forecasting
+- **Best for**: Regular patterns, seasonal data
+- **Configuration**: `models.type: nbeats`
+- **GPU**: Optional (CPU fallback available)
+
+### TOTO (Datadog's Zero-Shot Forecasting)
+- **Type**: Transformer-based zero-shot forecasting
+- **Best for**: Limited historical data, diverse time series
+- **Configuration**: `models.type: toto`
+- **GPU**: Recommended for performance
+- **Checkpoint**: Uses Hugging Face model `Datadog/Toto-Open-Base-1.0`
+
+## 📊 Validation & Accuracy
+
+The agent includes built-in forecast validation:
+
+- **Train/Test Split**: Configurable ratio (default 70/30)
+- **Metrics**: MAPE, MAE, RMSE calculated automatically
+- **Frequency**: Runs every N forecast cycles (configurable)
+- **Logging**: Detailed accuracy reports in application logs
+
+```
+INFO: Component cost: MAPE=12.34%, MAE=0.0456, RMSE=0.0789
+INFO: Component cpu_usage: MAPE=8.91%, MAE=2.1234, RMSE=3.4567
+INFO: Validation completed for 6 components across 2 clusters
 ```
 
-### Adding a New Optimizer
+## 🚀 Deployment
 
-1. Create a new optimizer class in `src/forecasting_agent/optimizers/`
-2. Implement the `BaseOptimizer` interface
-3. Register the optimizer in the optimizer factory
-
-## Deployment
-
-### Docker
+### Kubernetes (Recommended)
 
 ```bash
-docker build -t forecasting-agent .
-docker run -p 8000:8000 forecasting-agent
+# Apply the deployment
+kubectl apply -f deployments/kubernetes/deployment.yaml
+
+# Check status
+kubectl get pods -l app=forecasting-agent
+kubectl logs -l app=forecasting-agent
 ```
 
-### Kubernetes
+### Local Development
 
 ```bash
-kubectl apply -f deployments/kubernetes/
+# Install dependencies
+pdm install
+
+# Run directly
+PYTHONPATH=src pdm run python -m forecasting_agent.main config.yaml
+
+# Or with debugging
+PYTHONPATH=src pdm run python -m debugpy --listen 5678 --wait-for-client -m forecasting_agent.main config.yaml
 ```
 
-## Metrics
+## 🔧 Troubleshooting
 
-The agent exposes the following Prometheus metrics:
+**Prometheus Connection Failed**
+- Verify Prometheus URL in `config.yaml`
+- Check network connectivity: `curl http://your-prometheus:9090/api/v1/query?query=up`
+- Review agent logs for detailed error messages
 
-- `forecast_cluster_monthly_cost{cluster="prod"}`: Forecasted monthly cost
-- `forecast_confidence_interval{cluster="prod",bound="upper"}`: Upper bound of forecast
-- `forecast_confidence_interval{cluster="prod",bound="lower"}`: Lower bound of forecast
-- `optimization_potential_savings{cluster="prod",type="node"}`: Potential savings from optimizations
+**High MAPE Values**
+- Increase `lookback_days` for more training data
+- Try different model types (`nbeats` vs `toto`)
+- Adjust `forecast_horizon` to shorter periods
+- Check data quality and missing values
 
-## License
+## 📈 Monitoring
 
-Apache 2.0
+The agent provides comprehensive logging:
+
+```bash
+# View real-time logs
+tail -f forecasting-agent.log
+
+# Filter for validation results
+grep "MAPE" forecasting-agent.log
+
+# Monitor health checks
+grep "health check" forecasting-agent.log
+```
+
+## 📄 License
+
+Apache 2.0 - See LICENSE file for details
