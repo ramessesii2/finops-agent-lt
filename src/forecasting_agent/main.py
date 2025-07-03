@@ -15,6 +15,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from .collectors.prometheus import PrometheusCollector
 from .optimizers.idle_capacity import IdleCapacityOptimizer
 from forecasting_agent.adapters.forecasting.nbeats_adapter import NBEATSAdapter
+from forecasting_agent.adapters.forecasting.toto_adapter import TOTOAdapter
 from forecasting_agent.adapters.prometheus_timeseries_adapter import PrometheusTimeseriesAdapter
 
 # Configure logging
@@ -241,6 +242,25 @@ class ForecastingAgent:
             logger.error(f"Error generating forecast: {str(e)}")
             raise
 
+    def generate_forecast_TOTO(self, series: TimeSeries) -> dict:
+        """Generate forecast using Datadog Toto model based on config."""
+        try:
+            step = self.config['collector'].get('step', 'h')
+            horizon_days = self.config['models'].get('forecast_horizon', 30)
+            if step in ['h', '1h', 'hour']:
+                horizon = horizon_days * 24
+            elif step in ['m', '1m', 'min']:
+                horizon = horizon_days * 24 * 60
+            else:
+                horizon = horizon_days
+            model_config = self.config['models'].get('toto', {})
+            adapter = TOTOAdapter(model_config)
+            quantiles = self.config['models'].get('quantiles', [0.1, 0.5, 0.9])
+            return adapter.forecast(series, horizon, quantiles)
+        except Exception as e:
+            logger.error(f"Error generating Toto forecast: {str(e)}")
+            raise
+
     def run(self):
         """Run the forecasting agent."""
         global exported_forecasts
@@ -253,7 +273,10 @@ class ForecastingAgent:
             cluster_timeseries = self.collect_metrics_timeseries()
             # Generate forecast for each cluster
             for cluster, ts in cluster_timeseries.items():
-                forecast = self.generate_forecast_NBEATS(ts)
+                if self.config['models'].get('type', 'nbeats') == 'toto':
+                    forecast = self.generate_forecast_TOTO(ts)
+                else:
+                    forecast = self.generate_forecast_NBEATS(ts)
                 exported_forecasts[cluster] = forecast
             api_url = f"http://{api_host}:{api_port}/metrics/{{clustername}}"
             logger.info(f"Forecast metrics are now ready to be ingested via the API at {api_url}")

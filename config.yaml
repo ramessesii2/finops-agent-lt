@@ -9,8 +9,9 @@ collector:
 
 # Model configuration
 models:
-  type: nbeats 
-  forecast_horizon: 30 # number of days ahead in future
+  type: toto 
+  forecast_horizon: 7 # number of days ahead in future
+  quantiles: [0.1, 0.5, 0.9]
   prophet:
     # interval_width: 0.95 # set the uncertainty interval to 95% (the Prophet default is 80%)
     # Frequency is now inferred automatically from the data. Ensure your time series is regularly spaced.
@@ -35,6 +36,11 @@ models:
     generic_architecture: true
     likelihood: "QuantileRegression"
     # For probabilistic forecasting, you can use 'QuantileRegression', 'Poisson', 'Gaussian', etc.
+  toto:
+    checkpoint: Datadog/Toto-Open-Base-1.0
+    device: cpu              # or cuda
+    context_length: 4096
+    num_samples: 256 
 
 # Optimizer configuration
 optimizer:
