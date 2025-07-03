@@ -117,7 +117,10 @@ class NBEATSAdapter:
         else:
             self.model.fit(self.series_scaled, verbose=True)
 
-    def forecast(self, n: int, num_samples: int = 1, past_covariates: Optional[TimeSeries] = None):
+    def forecast(self, n: int, num_samples: int = 1, past_covariates: Optional[TimeSeries] = None, quantiles: Optional[list] = None):
+        """Generate forecast and return in JSON format matching other adapters."""
+        import pandas as pd
+        
         if past_covariates is not None:
             pc_scaled = self.cov_scaler.transform(past_covariates)
             forecast_scaled = self.model.predict(n, num_samples=num_samples, past_covariates=pc_scaled)
@@ -125,7 +128,76 @@ class NBEATSAdapter:
             forecast_scaled = self.model.predict(n, num_samples=num_samples)
         # Inverse transform to original scale
         forecast = self.target_scaler.inverse_transform(forecast_scaled)
+        
+        # If quantiles requested, format as JSON like other adapters
+        if quantiles is not None:
+            return self._format_forecast_json(forecast, quantiles)
+        
         return forecast
+    
+    def _format_forecast_json(self, forecast, quantiles):
+        """Format forecast as JSON matching the schema used by other adapters."""
+        import pandas as pd
+        import numpy as np
+        
+        results = {}
+        values = forecast.values(copy=False)
+        timestamps = pd.to_datetime(forecast.time_index).strftime("%Y-%m-%dT%H:%M:%SZ").tolist()
+        
+        if isinstance(forecast, list):
+            for i, ts in enumerate(forecast):
+                if isinstance(ts, list):
+                    for j, ts_inner in enumerate(ts):
+                        comp = f"component_{i}_{j}"
+                        comp_results = {}
+                        values = ts_inner.values(copy=False)
+                        timestamps = pd.to_datetime(ts_inner.time_index).strftime("%Y-%m-%dT%H:%M:%SZ").tolist()
+                        for q in quantiles:
+                            if getattr(ts_inner, 'n_samples', 1) > 1:
+                                q_values = np.quantile(values, q, axis=1)
+                            else:
+                                q_values = values[:, 0]
+                            comp_results[f"q{q:.2f}"] = [
+                                {"ds": t, "y": float(v)} for t, v in zip(timestamps, q_values)
+                            ]
+                        results[comp] = comp_results
+                else:
+                    comp = f"component_{i}"
+                    comp_results = {}
+                    values = ts.values(copy=False)
+                    timestamps = pd.to_datetime(ts.time_index).strftime("%Y-%m-%dT%H:%M:%SZ").tolist()
+                    for q in quantiles:
+                        if getattr(ts, 'n_samples', 1) > 1:
+                            q_values = np.quantile(values, q, axis=1)
+                        else:
+                            q_values = values[:, 0]
+                        comp_results[f"q{q:.2f}"] = [
+                            {"ds": t, "y": float(v)} for t, v in zip(timestamps, q_values)
+                        ]
+                    results[comp] = comp_results
+        else:
+            for comp_idx, comp in enumerate(forecast.components):
+                comp_results = {}
+                for q in quantiles:
+                    if values.ndim == 3:
+                        # [time, component, sample]
+                        if getattr(forecast, 'n_samples', 1) > 1:
+                            q_values = np.quantile(values[:, comp_idx, :], q, axis=1)
+                        else:
+                            q_values = values[:, comp_idx, 0]
+                    elif values.ndim == 2:
+                        # [time, sample] (single component)
+                        if getattr(forecast, 'n_samples', 1) > 1:
+                            q_values = np.quantile(values, q, axis=1)
+                        else:
+                            q_values = values[:, 0]
+                    else:
+                        raise ValueError(f"Unexpected values shape: {values.shape}")
+                    comp_results[f"q{q:.2f}"] = [
+                        {"ds": t, "y": float(v)} for t, v in zip(timestamps, q_values)
+                    ]
+                results[comp] = comp_results
+        return results
 
     def backtest(self, series: TimeSeries, past_covariates: Optional[TimeSeries] = None,
                  start: float = 0.8, stride: int = 1, metric: str = "mape"):

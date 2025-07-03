@@ -1,13 +1,9 @@
-import asyncio
 import logging
 from typing import Dict, Any, Optional, List
 import yaml
 from datetime import datetime, timedelta, timezone
-import pandas as pd
 import time
-import numpy as np
 from darts import TimeSeries
-from darts.dataprocessing.transformers import MissingValuesFiller
 import json
 from threading import Thread
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -162,84 +158,29 @@ class ForecastingAgent:
             raise
 
     def generate_forecast_NBEATS(self, series: TimeSeries) -> dict:
+        """Generate NBEATS forecast with horizon calculation and JSON formatting."""
         try:
-            # Ensure forecast horizon is 30 days ahead
             step = self.config['collector'].get('step', 'h')
-            horizon = self.config['models'].get('forecast_horizon', 30)
+            horizon_days = self.config['models'].get('forecast_horizon', 30)
             if step in ['h', '1h', 'hour']:
-                horizon = horizon * 24  # 30 days of hourly steps
+                horizon = horizon_days * 24
             elif step in ['m', '1m', 'min']:
-                horizon = horizon * 24 * 60      # 30 days of daily steps
-
-            model_type = self.config['models'].get('type', 'nbeats')
-            if model_type != 'nbeats':
-                raise ValueError("Only NBEATS is supported.")
+                horizon = horizon_days * 24 * 60
+            else:
+                horizon = horizon_days
+                
             model_config = self.config['models'].get('nbeats', {})
-            model = NBEATSAdapter(model_config)
-            model.fit(series)
+            adapter = NBEATSAdapter(model_config)
+            adapter.fit(series)
+            
             likelihood = model_config.get('likelihood', None)
             num_samples = model_config.get('num_samples', 100) if likelihood else 1
-            forecast = model.forecast(horizon, num_samples=num_samples)
             quantiles = self.config['models'].get('quantiles', [0.1, 0.5, 0.9])
-            results = {}
-            if isinstance(forecast, list):
-                for i, ts in enumerate(forecast):
-                    if isinstance(ts, list):
-                        for j, ts_inner in enumerate(ts):
-                            comp = f"component_{i}_{j}"
-                            comp_results = {}
-                            values = ts_inner.values(copy=False)
-                            timestamps = pd.to_datetime(ts_inner.time_index).strftime("%Y-%m-%dT%H:%M:%SZ").tolist()
-                            for q in quantiles:
-                                if getattr(ts_inner, 'n_samples', 1) > 1:
-                                    q_values = np.quantile(values, q, axis=1)
-                                else:
-                                    q_values = values[:, 0]
-                                comp_results[f"q{q:.2f}"] = [
-                                    {"ds": t, "y": float(v)} for t, v in zip(timestamps, q_values)
-                                ]
-                            results[comp] = comp_results
-                    else:
-                        comp = f"component_{i}"
-                        comp_results = {}
-                        values = ts.values(copy=False)
-                        timestamps = pd.to_datetime(ts.time_index).strftime("%Y-%m-%dT%H:%M:%SZ").tolist()
-                        for q in quantiles:
-                            if getattr(ts, 'n_samples', 1) > 1:
-                                q_values = np.quantile(values, q, axis=1)
-                            else:
-                                q_values = values[:, 0]
-                            comp_results[f"q{q:.2f}"] = [
-                                {"ds": t, "y": float(v)} for t, v in zip(timestamps, q_values)
-                            ]
-                        results[comp] = comp_results
-            else:
-                values = forecast.values(copy=False)
-                timestamps = pd.to_datetime(forecast.time_index).strftime("%Y-%m-%dT%H:%M:%SZ").tolist()
-                for comp_idx, comp in enumerate(forecast.components):
-                    comp_results = {}
-                    for q in quantiles:
-                        if values.ndim == 3:
-                            # [time, component, sample]
-                            if getattr(forecast, 'n_samples', 1) > 1:
-                                q_values = np.quantile(values[:, comp_idx, :], q, axis=1)
-                            else:
-                                q_values = values[:, comp_idx, 0]
-                        elif values.ndim == 2:
-                            # [time, sample] (single component)
-                            if getattr(forecast, 'n_samples', 1) > 1:
-                                q_values = np.quantile(values, q, axis=1)
-                            else:
-                                q_values = values[:, 0]
-                        else:
-                            raise ValueError(f"Unexpected values shape: {values.shape}")
-                        comp_results[f"q{q:.2f}"] = [
-                            {"ds": t, "y": float(v)} for t, v in zip(timestamps, q_values)
-                        ]
-                    results[comp] = comp_results
-            return results
+            
+            # Use adapter's forecast method with quantiles for JSON formatting
+            return adapter.forecast(horizon, num_samples=num_samples, quantiles=quantiles)
         except Exception as e:
-            logger.error(f"Error generating forecast: {str(e)}")
+            logger.error(f"Error generating NBEATS forecast: {str(e)}")
             raise
 
     def generate_forecast_TOTO(self, series: TimeSeries) -> dict:
@@ -262,30 +203,41 @@ class ForecastingAgent:
             raise
 
     def run(self):
-        """Run the forecasting agent."""
+        """Run the forecasting agent continuously."""
         global exported_forecasts
         # start forecast JSON server (once)
         metrics_conf = self.config['metrics']
         api_port = metrics_conf.get('forecast_api_port', metrics_conf['port'])
         api_host = metrics_conf.get('forecast_api_host', metrics_conf.get('host', '0.0.0.0'))
         _start_forecast_server(api_host, api_port)
-        try:
-            cluster_timeseries = self.collect_metrics_timeseries()
-            # Generate forecast for each cluster
-            for cluster, ts in cluster_timeseries.items():
-                if self.config['models'].get('type', 'nbeats') == 'toto':
-                    forecast = self.generate_forecast_TOTO(ts)
-                else:
-                    forecast = self.generate_forecast_NBEATS(ts)
-                exported_forecasts[cluster] = forecast
-            api_url = f"http://{api_host}:{api_port}/metrics/{{clustername}}"
-            logger.info(f"Forecast metrics are now ready to be ingested via the API at {api_url}")
-            # To plot all forecasts, uncomment the following line:
-            # plot_all_forecasts(cluster_timeseries, exported_forecasts)
-            time.sleep(self.config['agent']['interval'])
-        except Exception as e:
-            logger.error(f"Error in main loop: {str(e)}")
-            time.sleep(60)
+        
+        while True:
+            try:
+                logger.info("Collecting metrics and generating forecasts...")
+                cluster_timeseries = self.collect_metrics_timeseries()
+                # Generate forecast for each cluster
+                for cluster, ts in cluster_timeseries.items():
+                    if self.config['models'].get('type', 'nbeats') == 'toto':
+                        forecast = self.generate_forecast_TOTO(ts)
+                    else:
+                        forecast = self.generate_forecast_NBEATS(ts)
+                    exported_forecasts[cluster] = forecast
+                    logger.info(f"Generated forecast for cluster: {cluster}")
+                
+                api_url = f"http://{api_host}:{api_port}/metrics/{{clustername}}"
+                logger.info(f"Forecast metrics updated and available at {api_url}")
+                # To plot all forecasts, uncomment the following line:
+                # plot_all_forecasts(cluster_timeseries, exported_forecasts)
+                
+                logger.info(f"Waiting {self.config['agent']['interval']}s before next collection...")
+                time.sleep(self.config['agent']['interval'])
+            except KeyboardInterrupt:
+                logger.info("Received interrupt signal, shutting down gracefully...")
+                break
+            except Exception as e:
+                logger.error(f"Error in main loop: {str(e)}")
+                logger.info("Retrying in 60 seconds...")
+                time.sleep(60)
 
 def main():
     """Main entry point."""
@@ -296,8 +248,10 @@ def main():
     args = parser.parse_args()
     
     agent = ForecastingAgent(args.config)
-    #asyncio.run(agent.run())
-    agent.run()
+    try:
+        agent.run()
+    except KeyboardInterrupt:
+        logger.info("Forecasting agent stopped by user")
     
 if __name__ == '__main__':
     main() 

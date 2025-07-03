@@ -70,8 +70,8 @@ data:
 
     # Model configuration
     models:
-      type: nbeats
-      forecast_horizon: 30
+      type: toto
+      forecast_horizon: 7
       nbeats:
         freq: "h"
         input_chunk_length: 24
@@ -81,7 +81,11 @@ data:
         random_state: 42
         generic_architecture: true
         likelihood: "QuantileRegression"
-
+      toto:
+        checkpoint: Datadog/Toto-Open-Base-1.0
+        device: cpu              # or cuda
+        context_length: 4096
+        num_samples: 256 
     # Optimizer configuration
     optimizer:
       idle_threshold: 0.5
