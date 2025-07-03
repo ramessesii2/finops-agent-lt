@@ -7,6 +7,9 @@ from darts import TimeSeries
 import json
 from threading import Thread
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import pandas as pd
 
 from .collectors.prometheus import PrometheusCollector
 from .optimizers.idle_capacity import IdleCapacityOptimizer
@@ -78,10 +81,6 @@ def _start_forecast_server(host: str, port: int):
 
 def plot_all_forecasts(cluster_timeseries, exported_forecasts):
     """Plot all clusters' forecasts (history + forecast) for each component."""
-    import matplotlib.pyplot as plt
-    import matplotlib.dates as mdates
-    from darts import TimeSeries
-    import pandas as pd
 
     for cluster, ts in cluster_timeseries.items():
         forecast = exported_forecasts.get(cluster)
@@ -214,6 +213,35 @@ class ForecastingAgent:
             logger.error(f"Error generating Toto forecast: {str(e)}")
             raise
 
+    def validate_forecasts(self, cluster_timeseries: Dict[str, TimeSeries]) -> Dict[str, Dict[str, Dict[str, float]]]:
+        """Validate forecast accuracy using 70/30 train/test split."""
+        from .validation import ForecastValidator
+        
+        validator = ForecastValidator(train_ratio=0.7)
+        model_type = self.config['models'].get('type', 'nbeats')
+        
+        if model_type == 'toto':
+            from .adapters.forecasting.toto_adapter import TOTOAdapter
+            adapter_class = TOTOAdapter
+            model_config = self.config['models'].get('toto', {})
+        else:
+            from .adapters.forecasting.nbeats_adapter import NBEATSAdapter
+            adapter_class = NBEATSAdapter
+            model_config = self.config['models'].get('nbeats', {})
+        
+        # Add quantiles to config
+        model_config['quantiles'] = self.config['models'].get('quantiles', [0.1, 0.5, 0.9])
+        
+        logger.info(f"Starting validation with {model_type} model...")
+        results = validator.validate_all_clusters(adapter_class, cluster_timeseries, model_config)
+        
+        # Log summary
+        summary_df = validator.summarize_validation_results(results)
+        if not summary_df.empty:
+            logger.info(f"Validation completed for {len(summary_df)} components across {len(results)} clusters")
+        
+        return results
+    
     def run(self):
         """Run the forecasting agent continuously."""
         global exported_forecasts
@@ -221,6 +249,11 @@ class ForecastingAgent:
         api_port = metrics_conf.get('forecast_api_port', metrics_conf['port'])
         api_host = metrics_conf.get('forecast_api_host', metrics_conf.get('host', '0.0.0.0'))
         _start_forecast_server(api_host, api_port)
+        
+        # Check if validation is enabled
+        enable_validation = self.config.get('validation', {}).get('enabled', False)
+        validation_interval = self.config.get('validation', {}).get('interval_cycles', 5)
+        cycle_count = 0
         
         while True:
             try:
@@ -234,6 +267,16 @@ class ForecastingAgent:
                 
                 logger.info("Collecting metrics and generating forecasts...")
                 cluster_timeseries = self.collect_metrics_timeseries()
+                
+                # Run validation periodically if enabled
+                if enable_validation and cycle_count % validation_interval == 0:
+                    logger.info("Running forecast validation...")
+                    try:
+                        validation_results = self.validate_forecasts(cluster_timeseries)
+                        logger.info("Validation completed successfully")
+                    except Exception as e:
+                        logger.error(f"Validation failed: {str(e)}")
+                
                 # Generate forecast for each cluster
                 for cluster, ts in cluster_timeseries.items():
                     if self.config['models'].get('type', 'nbeats') == 'toto':
@@ -248,6 +291,7 @@ class ForecastingAgent:
                 # To plot all forecasts, uncomment the following line:
                 # plot_all_forecasts(cluster_timeseries, exported_forecasts)
                 
+                cycle_count += 1
                 logger.info(f"Waiting {self.config['agent']['interval']}s before next collection...")
                 time.sleep(self.config['agent']['interval'])
             except KeyboardInterrupt:

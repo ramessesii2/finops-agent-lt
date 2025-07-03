@@ -59,7 +59,13 @@ metrics:
 
 # Agent configuration
 agent:
-  interval: 3600  # 1 hour in seconds
+  interval: 300  # seconds between forecast updates
+
+# Validation configuration
+validation:
+  enabled: true
+  interval_cycles: 2  # Run validation every 5 forecast cycles
+  train_ratio: 0.7    # Use 70% for training, 30% for testing
   log_level: INFO 
 
 # NBEATSModel parameters:
