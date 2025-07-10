@@ -21,4 +21,4 @@ RUN pip install --no-cache-dir pdm && \
 EXPOSE 8081
 
 # Entrypoint
-CMD ["pdm", "run", "python", "-m", "forecasting_agent.main", "--config", "/app/config.yaml"]
+CMD ["pdm", "run", "python", "-m", "main", "--config", "/app/config.yaml"]
