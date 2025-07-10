@@ -1,7 +1,7 @@
 from typing import Dict, Any, List, Optional
 import pandas as pd
 import numpy as np
-from .base import BaseOptimizer
+from optimizers.base import BaseOptimizer
 import logging
 from prometheus_client import Gauge
 

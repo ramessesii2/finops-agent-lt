@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from darts.models import Prophet as DartsProphet
 from darts import TimeSeries
-from forecasting_agent.core.forecasting import ForecastingModel
+from core.forecasting import ForecastingModel
 
 class ProphetAdapter(ForecastingModel):
     def __init__(self, config):

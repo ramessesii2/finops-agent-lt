@@ -5,7 +5,7 @@
             "name": "Python: Forecasting Agent",
             "type": "python",
             "request": "launch",
-            "module": "src.forecasting_agent.main",
+            "module": "src.main",
             "args": ["--config", "config.yaml"],
             "console": "integratedTerminal",
             "justMyCode": false,

@@ -70,7 +70,7 @@ class PrometheusCollector:
         # Record timestamp of successful collection for health_check()
         self.last_collection = datetime.now()
         return results
-
+    
     def get_available_metrics(self) -> List[str]:
         """Get list of available Prometheus metrics.
         
