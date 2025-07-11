@@ -56,14 +56,31 @@ class PrometheusToTotoAdapter:
         if not cluster_data:
             raise ValueError(f"No data found for cluster: {cluster_name}")
         
-        # Convert to tensor format
-        masked_timeseries = self._build_masked_timeseries(cluster_data['metrics'])
+        # Build node-metric combinations first for both tensor building and metadata
+        node_metric_combinations = []
+        for metric_name, metric_values in cluster_data['metrics'].items():
+            # Get all unique nodes for this metric
+            nodes_for_metric = set(item['node_name'] for item in metric_values)
+            for node_name in sorted(nodes_for_metric):  # Sort for consistent ordering
+                node_metric_combinations.append((metric_name, node_name))
         
-        # Return MaskedTimeseries, node names, and metric names for downstream processing
+        # Convert to tensor format using node-metric combinations
+        masked_timeseries = self._build_masked_timeseries(cluster_data['metrics'], node_metric_combinations)
+        
+        # Create variate metadata for each node-metric combination
+        variate_metadata = []
+        for metric_name, node_name in node_metric_combinations:
+            variate_metadata.append({
+                'metric_name': metric_name,
+                'node_name': node_name,
+                'variate_id': f"{metric_name}_{node_name}"
+            })
+        
         return {
             'masked_timeseries': masked_timeseries,
             'node_names': cluster_data['node_names'],
-            'metric_names': list(cluster_data['metrics'].keys())
+            'metric_names': list(cluster_data['metrics'].keys()),
+            'variate_metadata': variate_metadata
         }
     
     def _validate_input(self, prometheus_data: Dict[str, List[Dict[str, Any]]], cluster_name: str):
@@ -139,7 +156,7 @@ class PrometheusToTotoAdapter:
             'node_names': list(node_names) if node_names else ['cluster-aggregate']
         }
     
-    def _build_masked_timeseries(self, cluster_data: Dict[str, List[Dict[str, Any]]]) -> MaskedTimeseries:
+    def _build_masked_timeseries(self, cluster_data: Dict[str, List[Dict[str, Any]]], node_metric_combinations: List[tuple]) -> MaskedTimeseries:
         """
         Build MaskedTimeseries tensor from cluster data.
         
@@ -165,9 +182,9 @@ class PrometheusToTotoAdapter:
             # Calculate time interval from first two timestamps
             time_interval = sorted_timestamps[1] - sorted_timestamps[0]
         
-        # Build tensor data
-        metric_names = list(cluster_data.keys())
-        n_variates = len(metric_names)
+        # Use passed node-metric combinations to preserve node-specific data
+        # node_metric_combinations is now passed as parameter to avoid duplication
+        n_variates = len(node_metric_combinations)
         n_timesteps = len(sorted_timestamps)
         
         # Initialize tensors
@@ -175,17 +192,20 @@ class PrometheusToTotoAdapter:
         padding_mask = torch.full((n_variates, n_timesteps), True, dtype=torch.bool)
         id_mask = torch.zeros((n_variates, n_timesteps), dtype=torch.float32)
         
-        # Fill in the data
         timestamp_to_idx = {ts: idx for idx, ts in enumerate(sorted_timestamps)}
         
-        for variate_idx, metric_name in enumerate(metric_names):
+        for variate_idx, (metric_name, node_name) in enumerate(node_metric_combinations):
             metric_values = cluster_data[metric_name]
             
+            # Only process values for this specific node
             for item in metric_values:
-                timestamp = item['timestamp']
-                value = item['value']
-                time_idx = timestamp_to_idx[timestamp]
-                series_data[variate_idx, time_idx] = value
+                if item['node_name'] == node_name:
+                    timestamp = item['timestamp']
+                    value = item['value']
+                    time_idx = timestamp_to_idx[timestamp]
+                    
+                    series_data[variate_idx, time_idx] = value
+                    padding_mask[variate_idx, time_idx] = False
         
         # Build timestamp tensors
         timestamp_tensor = torch.tensor(sorted_timestamps, dtype=torch.int64)

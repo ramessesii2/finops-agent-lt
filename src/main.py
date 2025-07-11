@@ -95,49 +95,6 @@ def _start_forecast_server(host: str, port: int):
     thread.start()
     logger.info(f"Forecast HTTP server running on {host}:{port}")
 
-def plot_all_forecasts(cluster_timeseries, exported_forecasts):
-    """Plot all clusters' forecasts (history + forecast) for each component."""
-
-    for cluster, ts in cluster_timeseries.items():
-        forecast = exported_forecasts.get(cluster)
-        if not forecast:
-            continue
-        # Plot the forecast (median) for each component
-        # Reconstruct a Darts TimeSeries for the median forecast
-        median_dict = {}
-        for comp, quantile_dict in forecast.items():
-            median_points = quantile_dict.get("q0.50") or quantile_dict.get("q0.5")
-            if median_points:
-                df = pd.DataFrame(median_points)
-                df["ds"] = pd.to_datetime(df["ds"])
-                # Use DatetimeIndex for times
-                median_dict[comp] = TimeSeries.from_times_and_values(pd.DatetimeIndex(df["ds"]), df["y"].to_numpy(), columns=[comp])
-        if median_dict:
-            # Combine all median component series into one multivariate TimeSeries
-            median_ts = TimeSeries.from_dataframe(
-                pd.concat([s.to_dataframe() for s in median_dict.values()], axis=1)
-            )
-            for comp in ts.components:
-                plt.figure(figsize=(12, 5))
-                hist_df = ts[comp].to_dataframe().reset_index()
-                fcst_df = median_ts[comp].to_dataframe().reset_index()
-                time_col = hist_df.columns[0]
-                plt.plot(hist_df[time_col], hist_df[comp], label="History", lw=2)
-                plt.plot(fcst_df[time_col], fcst_df[comp], label="Forecast", lw=2, linestyle="--")
-                forecast_start = hist_df[time_col].iloc[-1]
-                axv = mdates.date2num(pd.Timestamp(forecast_start))
-                if hasattr(axv, 'item'):
-                    axv = float(axv.item())
-                else:
-                    axv = float(axv)
-                plt.axvline(axv, color="k", linestyle=":", label="Forecast Start")
-                plt.title(f"{comp} - Full Horizon Forecast for {cluster}")
-                plt.xlabel("Time")
-                plt.ylabel(comp)
-                plt.legend()
-                plt.tight_layout()
-                plt.show()
-
 class ForecastingAgent:
     """Main forecasting agent class."""
     def __init__(self, config_path: str):
@@ -259,7 +216,8 @@ class ForecastingAgent:
                     multi_cluster_data[cluster_name] = {
                         'masked_timeseries': conversion_result['masked_timeseries'],
                         'metric_names': metric_names,
-                        'node_names': conversion_result['node_names']
+                        'node_names': conversion_result['node_names'],
+                        'variate_metadata': conversion_result['variate_metadata']
                     }
                     
                 except Exception as e:
@@ -295,7 +253,7 @@ class ForecastingAgent:
                     series=masked_timeseries,
                     horizon=future_steps,  # Use calculated timesteps instead of raw days
                     quantiles=quantiles,
-                    metric_names=cluster_info['metric_names']
+                    variate_metadata=cluster_info['variate_metadata']
                 )
                 
                 cluster_toto_forecasts[cluster_name] = toto_forecast
@@ -304,53 +262,34 @@ class ForecastingAgent:
             format_converter = ForecastFormatConverter()
             cluster_grouped_results = {}
             
-            for cluster_name, toto_output in cluster_toto_forecasts.items():
-                logger.debug(f"Converting forecast format for cluster: {cluster_name}")
+            # Convert each cluster's TOTO forecast to cluster-grouped format
+            for cluster_name, toto_forecast in cluster_toto_forecasts.items():
+                logger.debug(f"Converting TOTO forecast for cluster: {cluster_name}")
                 
-                # Get actual node names for this cluster from our extracted data
-                cluster_info = multi_cluster_data.get(cluster_name, {})
-                node_names = cluster_info.get('node_names', ['cluster-aggregate'])
-                metric_names = cluster_info.get('metric_names', [])
-                
-                metrics_by_level = MetricTypeClassifier.get_metrics_by_level(set(metric_names))
-                
-                cluster_forecasts = []
-                
-                # Handle cluster-level metrics (single entry with cluster-aggregate)
-                cluster_level_metrics = metrics_by_level[MetricAggregationLevel.CLUSTER]
-                if cluster_level_metrics:
-                    # Filter TOTO output to only cluster-level metrics to avoid duplication
-                    cluster_filtered_output = self._filter_toto_output_by_metrics(
-                        toto_output, list(cluster_level_metrics)
+                try:
+                    # Convert TOTO forecast output to cluster-grouped Prometheus format
+                    cluster_forecast_entries = format_converter.convert_to_cluster_grouped_format(
+                        toto_forecast_output=toto_forecast,
+                        cluster_name=cluster_name
                     )
-                    cluster_aggregate_forecasts = format_converter.convert_to_cluster_grouped_format(
-                        toto_forecast_output=cluster_filtered_output,
-                        cluster_name=cluster_name,
-                        node_name="cluster-aggregate",  # Single entry for cluster-level metrics
-                        extra_labels={}
-                    )
-                    cluster_forecasts.extend(cluster_aggregate_forecasts)
-                    logger.debug(f"Added {len(cluster_aggregate_forecasts)} cluster-level forecasts for cluster {cluster_name}")
-                
-                # Handle node-level metrics (multiple entries per node)
-                node_level_metrics = metrics_by_level[MetricAggregationLevel.NODE]
-                if node_level_metrics:
-                    # Filter TOTO output to only node-level metrics to avoid duplication
-                    node_filtered_output = self._filter_toto_output_by_metrics(
-                        toto_output, list(node_level_metrics)
-                    )
-                    for node_name in node_names:
-                        if node_name != 'cluster-aggregate':  # Skip aggregate for node-level metrics
-                            node_specific_forecasts = format_converter.convert_to_cluster_grouped_format(
-                                toto_forecast_output=node_filtered_output,
-                                cluster_name=cluster_name,
-                                node_name=node_name,  # Use actual node name for node-level metrics
-                                extra_labels={}
-                            )
-                            cluster_forecasts.extend(node_specific_forecasts)
-                            logger.debug(f"Added {len(node_specific_forecasts)} node-level forecasts for node {node_name}")
-                
-                cluster_grouped_results[cluster_name] = cluster_forecasts
+                    
+                    # Store the converted forecasts for this cluster
+                    cluster_grouped_results[cluster_name] = {
+                        'forecasts': cluster_forecast_entries,
+                        'metadata': {
+                            'total_metrics': len(set(entry['metric']['__name__'] for entry in cluster_forecast_entries)),
+                            'total_forecasts': len(cluster_forecast_entries),
+                            'horizon_days': forecast_horizon_days,
+                            'quantiles': quantiles
+                        }
+                    }
+                    
+                    logger.debug(f"Successfully converted {len(cluster_forecast_entries)} forecast entries for cluster {cluster_name}")
+                    
+                except Exception as e:
+                    logger.error(f"Error converting TOTO forecast for cluster {cluster_name}: {str(e)}")
+                    # Continue with other clusters even if one fails
+                    continue
             
             logger.info(f"Successfully generated cluster-grouped forecasts for {len(cluster_grouped_results)} clusters")
             return cluster_grouped_results
@@ -358,45 +297,6 @@ class ForecastingAgent:
         except Exception as e:
             logger.error(f"Error generating TOTO forecast: {str(e)}")
             raise
-    
-    def _filter_toto_output_by_metrics(self, toto_output: Dict[str, Any], selected_metrics: List[str]) -> Dict[str, Any]:
-        """
-        Filter TOTO forecast output to include only selected metrics.
-        
-        This prevents metric duplication by ensuring cluster-level and node-level
-        processing only work with their respective metric types.
-        
-        Args:
-            toto_output: Complete TOTO forecast output with all metrics
-            selected_metrics: List of metric names to include in filtered output
-            
-        Returns:
-            Filtered TOTO output containing only the selected metrics
-        """
-        # Filter quantiles to only include selected metrics
-        filtered_quantiles = {}
-        original_quantiles = toto_output.get('quantiles', {})
-        
-        for metric_name in selected_metrics:
-            if metric_name in original_quantiles:
-                filtered_quantiles[metric_name] = original_quantiles[metric_name]
-        
-        # Create filtered output preserving all other fields
-        filtered_output = {
-            'quantiles': filtered_quantiles,
-            'timestamps': toto_output.get('timestamps', []),
-            'metric_names': selected_metrics,
-            'horizon': toto_output.get('horizon', 168),
-            'time_interval_seconds': toto_output.get('time_interval_seconds', 3600)
-        }
-        
-        # Preserve any additional fields that might be present
-        for key, value in toto_output.items():
-            if key not in filtered_output:
-                filtered_output[key] = value
-        
-        logger.debug(f"Filtered TOTO output: {len(selected_metrics)} metrics selected from {len(original_quantiles)} total")
-        return filtered_output
     
     def _extract_cluster_names_from_raw_results(self, raw_results: Dict[str, Any]) -> List[str]:
         """Extract unique cluster names from raw Prometheus results."""

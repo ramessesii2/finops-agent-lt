@@ -25,7 +25,7 @@ class TOTOAdapter:
         series: MaskedTimeseries,
         horizon: int,
         quantiles: Optional[List[float]] = None,
-        metric_names: Optional[List[str]] = None
+        variate_metadata: Optional[List[Dict[str, str]]] = None
     ) -> Dict[str, Any]:
         """Generate a horizon-step forecast for the given MaskedTimeseries.
 
@@ -37,24 +37,35 @@ class TOTOAdapter:
             Number of future steps to predict.
         quantiles : list[float], optional
             Quantiles to emit; defaults to [0.1, 0.5, 0.9].
-        metric_names : list[str], optional
-            Names of metrics for the tensor variates.
+        variate_metadata : list[dict], optional
+            Metadata for each tensor variate. Each dict should contain:
+            - 'metric_name': Name of the metric (e.g., 'cost_usd_per_node')
+            - 'node_name': Name of the node (e.g., 'test-cluster-cp-0')
+            - 'variate_id': Unique identifier for this variate
+            If not provided, generic metadata will be generated.
 
         Returns
         -------
         Dict containing:
             - 'samples': Raw forecast samples tensor
-            - 'quantiles': Calculated quantile values
+            - 'series': Series data organized by variate_id, each containing quantiles and metadata
             - 'timestamps': Future timestamps
-            - 'metric_names': Names of metrics
+            - 'variate_metadata': Metadata for each variate
             - 'horizon': Forecast horizon
             - 'time_interval_seconds': Time interval in seconds
         """
         quantiles = quantiles or [0.1, 0.5, 0.9]
         
-        # Set default metric names if not provided
-        if metric_names is None:
-            metric_names = [f"metric_{i}" for i in range(series.series.shape[0])]
+        # Set default variate metadata if not provided
+        if variate_metadata is None:
+            variate_metadata = [
+                {
+                    'metric_name': f'metric_{i}',
+                    'node_name': f'node_{i}',
+                    'variate_id': f'variate_{i}'
+                }
+                for i in range(series.series.shape[0])
+            ]
         
         # Run TOTO inference
         forecast_result = self._run_toto_inference(series, horizon)
@@ -67,30 +78,33 @@ class TOTOAdapter:
             for i in range(horizon)
         ]
         
-        # Calculate quantiles for each metric
+        # Calculate quantiles for each variate (node-metric combination)
         samples = forecast_result.samples  # Shape: (num_samples, n_variates, horizon)
-        quantile_results = {}
+        series_results = {}
         
-        for variate_idx, metric_name in enumerate(metric_names):
-            metric_samples = samples[:, variate_idx, :]  # Shape: (num_samples, horizon)
-            metric_quantiles = {}
+        for variate_idx, metadata in enumerate(variate_metadata):
+            variate_samples = samples[:, variate_idx, :]  # Shape: (num_samples, horizon)
+            variate_quantiles = {}
             
             for q in quantiles:
                 quantile_values = []
                 for time_idx in range(horizon):
-                    time_samples = metric_samples[:, time_idx]  # Shape: (num_samples,)
+                    time_samples = variate_samples[:, time_idx]  # Shape: (num_samples,)
                     quantile_value = torch.quantile(time_samples, q).item()
                     quantile_values.append(self._to_scalar(quantile_value))
-                metric_quantiles[f"q{q:.2f}"] = quantile_values
+                variate_quantiles[f"q{q:.2f}"] = quantile_values
             
-            quantile_results[metric_name] = metric_quantiles
+            # Use variate_id as key to ensure uniqueness
+            series_results[metadata['variate_id']] = {
+                'quantiles': variate_quantiles,
+                'metadata': metadata
+            }
         
-        # Return pure TOTO forecast output
         return {
             'samples': samples,
-            'quantiles': quantile_results,
+            'series': series_results,
             'timestamps': future_timestamps,
-            'metric_names': metric_names,
+            'variate_metadata': variate_metadata,
             'horizon': horizon,
             'time_interval_seconds': time_interval
         }

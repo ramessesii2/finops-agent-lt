@@ -81,14 +81,37 @@ class ForecastFormatConverter:
         if not cluster_name:
             raise ValueError("Cluster name is required")
         
-        # Extract data from TOTO forecast output
-        quantile_results = toto_forecast_output.get('quantiles', {})
+        series_results = toto_forecast_output.get('series', {})
         timestamps = toto_forecast_output.get('timestamps', [])
-        metric_names = toto_forecast_output.get('metric_names', [])
+        variate_metadata = toto_forecast_output.get('variate_metadata', [])
         horizon = toto_forecast_output.get('horizon', 0)
         
-        if not quantile_results or not timestamps or not metric_names:
+        metric_names = toto_forecast_output.get('metric_names', [])
+        
+        # Debug logging to understand actual format
+        self.logger.debug(f"TOTO output keys: {list(toto_forecast_output.keys())}")
+        self.logger.debug(f"Series results type: {type(series_results)}, length: {len(series_results) if series_results else 0}")
+        self.logger.debug(f"Timestamps type: {type(timestamps)}, length: {len(timestamps) if timestamps else 0}")
+        self.logger.debug(f"Variate metadata type: {type(variate_metadata)}, length: {len(variate_metadata) if variate_metadata else 0}")
+        
+        if series_results:
+            self.logger.debug(f"First few series result keys: {list(series_results.keys())[:3]}")
+            if series_results:
+                first_key = next(iter(series_results.keys()))
+                first_value = series_results[first_key]
+                self.logger.debug(f"Sample series result structure for {first_key}: {list(first_value.keys()) if isinstance(first_value, dict) else type(first_value)}")
+        
+        if not series_results or not timestamps:
+            self.logger.error(f"VALIDATION FAILED - series_results: {bool(series_results)}, timestamps: {bool(timestamps)}")
             raise ValueError("Invalid TOTO forecast output format")
+        
+        if variate_metadata:
+            unique_metrics = set()
+            for metadata in variate_metadata:
+                unique_metrics.add(metadata['metric_name'])
+            metric_names = list(unique_metrics)
+        elif not metric_names:
+            raise ValueError("No variate_metadata or metric_names found in TOTO forecast output")
         
         # Initialize result list
         cluster_forecasts = []
@@ -96,101 +119,58 @@ class ForecastFormatConverter:
         extra_labels = extra_labels or {}
         
         # Convert each metric and quantile combination
-        for metric_name in metric_names:
-            if metric_name not in quantile_results:
-                self.logger.warning(f"Missing quantile data for metric: {metric_name}")
-                continue
-                
-            metric_quantiles = quantile_results[metric_name]
-            # Simply append _forecast suffix to metric name - keep it simple
-            forecast_name = self._get_forecast_name(metric_name)
-            
-            # Create forecast entry for each quantile
-            for quantile_key, quantile_values in metric_quantiles.items():
-                if not isinstance(quantile_values, list) or len(quantile_values) != len(timestamps):
-                    self.logger.warning(f"Invalid quantile values for {metric_name} {quantile_key}")
+        if variate_metadata:
+            # Process variate_id-based series structure (renamed from quantiles for clarity)
+            for variate_id, variate_data in series_results.items():
+                if 'metadata' not in variate_data or 'quantiles' not in variate_data:
+                    self.logger.warning(f"Invalid variate data for {variate_id}")
                     continue
                 
-                # Extract quantile value from key (e.g., "q0.50" -> "0.50")
-                quantile_str = quantile_key.replace('q', '')
+                metadata = variate_data['metadata']
+                metric_name = metadata['metric_name']
+                variate_quantiles = variate_data['quantiles']
                 
-                # Build metric labels
-                metric_labels = {
-                    "__name__": forecast_name,
-                    "clusterName": cluster_name,
-                    "node": node_name,
-                    "quantile": quantile_str,
-                    "horizon": self._format_horizon(horizon)
-                }
+                # Simply append _forecast suffix to metric name - keep it simple
+                forecast_name = self._get_forecast_name(metric_name)
                 
-                # Add extra labels if provided
-                metric_labels.update(extra_labels)
-                
-                # Apply intelligent rounding for discrete metrics
-                processed_values = self._process_values_for_metric_type(metric_name, quantile_values)
-                
-                # Create Prometheus-style forecast entry
-                forecast_entry = {
-                    "metric": metric_labels,
-                    "values": processed_values,
-                    "timestamps": timestamps
-                }
-                
-                cluster_forecasts.append(forecast_entry)
-        
+                # Create forecast entry for each quantile
+                for quantile_key, quantile_values in variate_quantiles.items():
+                    if not isinstance(quantile_values, list) or len(quantile_values) != len(timestamps):
+                        self.logger.warning(f"Invalid quantile values for {variate_id} {quantile_key}")
+                        continue
+                    
+                    # Extract quantile value from key (e.g., "q0.50" -> "0.50")
+                    quantile_str = quantile_key.replace('q', '')
+                    
+                    # Build metric labels with node name from metadata
+                    metric_labels = {
+                        "__name__": forecast_name,
+                        "clusterName": cluster_name,
+                        "node": metadata.get('node_name', node_name),
+                        "quantile": quantile_str,
+                        "horizon": f"{horizon//24}d" if horizon >= 24 else f"{horizon}h"
+                    }
+                    
+                    # Add extra labels
+                    metric_labels.update(extra_labels)
+                    
+                    # Process values for metric type (intelligent rounding for discrete metrics)
+                    processed_values = self._process_values_for_metric_type(metric_name, quantile_values)
+                    
+                    # Create forecast entry
+                    forecast_entry = {
+                        "metric": metric_labels,
+                        "values": processed_values,
+                        "timestamps": timestamps
+                    }
+                    
+                    cluster_forecasts.append(forecast_entry)
+
         if not cluster_forecasts:
             raise ValueError(f"No valid forecast entries generated for cluster: {cluster_name}")
         
         self.logger.debug(f"Generated {len(cluster_forecasts)} forecast entries for cluster: {cluster_name}")
         return cluster_forecasts
-    
-    def convert_multi_cluster_forecasts(
-        self,
-        multi_cluster_toto_output: Dict[str, Dict[str, Any]],
-        cluster_node_mapping: Optional[Dict[str, str]] = None,
-        global_extra_labels: Optional[Dict[str, str]] = None
-    ) -> Dict[str, List[Dict[str, Any]]]:
-        """
-        Convert multiple cluster TOTO forecasts to cluster-grouped format.
-        
-        Args:
-            multi_cluster_toto_output: Dict mapping cluster names to TOTO forecast outputs
-            cluster_node_mapping: Optional mapping of cluster names to node names
-            global_extra_labels: Optional labels to apply to all clusters
-            
-        Returns:
-            Dict with cluster-grouped format: {cluster_name: [forecast_entries]}
-        """
-        if not multi_cluster_toto_output:
-            raise ValueError("Empty multi-cluster TOTO output provided")
-        
-        cluster_node_mapping = cluster_node_mapping or {}
-        global_extra_labels = global_extra_labels or {}
-        
-        cluster_grouped_results = {}
-        
-        for cluster_name, toto_output in multi_cluster_toto_output.items():
-            try:
-                node_name = cluster_node_mapping.get(cluster_name)
-                
-                cluster_forecasts = self.convert_to_cluster_grouped_format(
-                    toto_forecast_output=toto_output,
-                    cluster_name=cluster_name,
-                    node_name=node_name,
-                    extra_labels=global_extra_labels
-                )
-                
-                cluster_grouped_results[cluster_name] = cluster_forecasts
-                
-            except Exception as e:
-                self.logger.error(f"Failed to convert forecast for cluster {cluster_name}: {str(e)}")
-                continue
-        
-        if not cluster_grouped_results:
-            raise ValueError("No clusters could be converted successfully")
-        
-        self.logger.info(f"Successfully converted forecasts for {len(cluster_grouped_results)} clusters")
-        return cluster_grouped_results
     
     def _format_horizon(self, horizon_hours: int) -> str:
         """
@@ -275,58 +255,3 @@ class ForecastFormatConverter:
         else:
             processed_values = [round(value, 6) for value in values]
             return processed_values
-
-
-# Pure utility functions following functional programming principles
-
-def convert_single_cluster_forecast(
-    toto_forecast_output: Dict[str, Any],
-    cluster_name: str,
-    node_name: Optional[str] = None,
-    extra_labels: Optional[Dict[str, str]] = None
-) -> List[Dict[str, Any]]:
-    """
-    Pure function to convert a single cluster's TOTO forecast to Prometheus format.
-    
-    This is a functional interface to the converter for simple use cases.
-    
-    Args:
-        toto_forecast_output: Pure TOTO forecast output
-        cluster_name: Name of the cluster
-        node_name: Optional node name
-        extra_labels: Optional additional labels
-        
-    Returns:
-        List of Prometheus-style forecast entries
-    """
-    converter = ForecastFormatConverter()
-    return converter.convert_to_cluster_grouped_format(
-        toto_forecast_output=toto_forecast_output,
-        cluster_name=cluster_name,
-        node_name=node_name,
-        extra_labels=extra_labels
-    )
-
-
-def convert_multi_cluster_forecasts(
-    multi_cluster_toto_output: Dict[str, Dict[str, Any]],
-    cluster_node_mapping: Optional[Dict[str, str]] = None,
-    global_extra_labels: Optional[Dict[str, str]] = None
-) -> Dict[str, List[Dict[str, Any]]]:
-    """
-    Pure function to convert multiple clusters' TOTO forecasts to cluster-grouped format.
-    
-    Args:
-        multi_cluster_toto_output: Dict mapping cluster names to TOTO outputs
-        cluster_node_mapping: Optional cluster to node mapping
-        global_extra_labels: Optional global labels
-        
-    Returns:
-        Cluster-grouped forecast results
-    """
-    converter = ForecastFormatConverter()
-    return converter.convert_multi_cluster_forecasts(
-        multi_cluster_toto_output=multi_cluster_toto_output,
-        cluster_node_mapping=cluster_node_mapping,
-        global_extra_labels=global_extra_labels
-    )
