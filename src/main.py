@@ -66,11 +66,7 @@ def _start_forecast_server(host: str, port: int):
                 cluster = self.path[len("/metrics/"):]
                 if cluster in exported_forecasts and cluster:
                     cluster_forecasts = exported_forecasts[cluster]
-                    self._send_json({
-                        "cluster": cluster,
-                        "forecasts": cluster_forecasts,
-                        "forecast_count": len(cluster_forecasts) if isinstance(cluster_forecasts, list) else 1
-                    })
+                    self._send_json(cluster_forecasts)
                 else:
                     self._send_json({"error": f"cluster '{cluster}' not found", "available_clusters": list(exported_forecasts.keys())}, status=404)
             else:
