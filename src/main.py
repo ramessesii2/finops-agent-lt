@@ -42,8 +42,88 @@ def _start_forecast_server(host: str, port: int):
             self.send_response(status)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(body)))
+            # Add CORS headers for API access
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
             self.end_headers()
             self.wfile.write(body)
+        
+        def _handle_model_endpoint(self):
+            """Handle /model endpoint requests following TDD test specifications."""
+            from datetime import datetime
+            
+            try:
+                # Check if validation results exist
+                validation_results = exported_forecasts.get('_validation_results')
+                
+                if not validation_results:
+                    self._send_json({
+                        "status": "no_validation_data",
+                        "message": "No validation data available. Validation may not have run yet.",
+                        "timestamp": datetime.now().isoformat()
+                    })
+                    return
+                
+                # Check if validation results are properly formatted
+                if not isinstance(validation_results, dict):
+                    self._send_json({
+                        "status": "error",
+                        "message": "Validation data is malformed",
+                        "timestamp": datetime.now().isoformat()
+                    })
+                    return
+                
+                # Calculate summary statistics
+                summary = self._calculate_validation_summary(validation_results)
+                
+                # Return comprehensive validation response
+                self._send_json({
+                    "status": "success",
+                    "timestamp": datetime.now().isoformat(),
+                    "validation_results": validation_results,
+                    "summary": summary,
+                    "validation_config": {
+                        "train_ratio": 0.7,
+                        "metrics": ["mape", "mae", "rmse"],
+                        "format": "toto"
+                    }
+                })
+                
+            except Exception as e:
+                self._send_json({
+                    "status": "error",
+                    "message": f"Error processing validation data: {str(e)}",
+                    "timestamp": datetime.now().isoformat()
+                }, status=500)
+        
+        def _calculate_validation_summary(self, validation_results):
+            """Calculate summary statistics for validation results."""
+            cluster_count = len(validation_results)
+            clusters_with_errors = 0
+            total_metrics = 0
+            mape_values = []
+            
+            for cluster_name, cluster_data in validation_results.items():
+                if isinstance(cluster_data, dict):
+                    if "error" in cluster_data:
+                        clusters_with_errors += 1
+                    else:
+                        # Count valid metrics and collect MAPE values
+                        for metric_name, metric_data in cluster_data.items():
+                            if isinstance(metric_data, dict) and "mape" in metric_data:
+                                total_metrics += 1
+                                if isinstance(metric_data["mape"], (int, float)):
+                                    mape_values.append(metric_data["mape"])
+            
+            average_mape = sum(mape_values) / len(mape_values) if mape_values else 0
+            
+            return {
+                "cluster_count": cluster_count,
+                "clusters_with_errors": clusters_with_errors,
+                "metrics_validated": total_metrics,
+                "average_mape": round(average_mape, 2)
+            }
 
         def do_GET(self):
             if self.path == "/clusters" or self.path == "/clusters/":
@@ -61,6 +141,9 @@ def _start_forecast_server(host: str, port: int):
                     "total_forecast_entries": sum(len(forecasts) if isinstance(forecasts, list) else 1 
                                                  for forecasts in exported_forecasts.values())
                 })
+            elif self.path == "/model" or self.path == "/model/":
+                # Return validation results and model information
+                self._handle_model_endpoint()
             elif self.path.startswith("/metrics/"):
                 # Return metrics for specific cluster
                 cluster = self.path[len("/metrics/"):]
@@ -323,34 +406,84 @@ class ForecastingAgent:
         
         return metric_names
 
-    def validate_forecasts(self, cluster_timeseries: Dict[str, TimeSeries]) -> Dict[str, Dict[str, Dict[str, float]]]:
-        """Validate forecast accuracy using 70/30 train/test split."""
+    def validate_forecasts(self, raw_prometheus_data: Optional[Dict[str, Any]] = None) -> Dict[str, Dict[str, Dict[str, float]]]:
+        """Validate forecast accuracy using 70/30 train/test split with Prometheus data source.
+        
+        Args:
+            raw_prometheus_data: Raw Prometheus query results. If None, collects fresh data.
+            
+        Returns:
+            Dict containing validation results for all clusters
+            
+        Raises:
+            ValueError: If no valid data is available for validation
+        """
         from validation import ForecastValidator
+        from adapters.forecasting.toto_adapter import TOTOAdapter
+        from adapters.prometheus_toto_adapter import PrometheusToTotoAdapter
         
-        validator = ForecastValidator(train_ratio=0.7)
-        model_type = self.config['models'].get('type', 'nbeats')
-        
-        if model_type == 'toto':
-            from adapters.forecasting.toto_adapter import TOTOAdapter
-            adapter_class = TOTOAdapter
+        try:
+            # Collect raw data if not provided
+            if raw_prometheus_data is None:
+                logger.info("Collecting fresh Prometheus data for validation...")
+                raw_prometheus_data = self.collect_raw_metrics()
+            
+            if not raw_prometheus_data:
+                raise ValueError("No Prometheus data available for validation")
+            
+            # Initialize components
+            validator = ForecastValidator(train_ratio=0.7)
+            prometheus_adapter = PrometheusToTotoAdapter()
+            
+            # Get TOTO model configuration
             model_config = self.config['models'].get('toto', {})
-        else:
-            from adapters.forecasting.nbeats_adapter import NBEATSAdapter
-            adapter_class = NBEATSAdapter
-            model_config = self.config['models'].get('nbeats', {})
-        
-        # Add quantiles to config
-        model_config['quantiles'] = self.config['models'].get('quantiles', [0.1, 0.5, 0.9])
-        
-        logger.info(f"Starting validation with {model_type} model...")
-        results = validator.validate_all_clusters(adapter_class, cluster_timeseries, model_config)
-        
-        # Log summary
-        summary_df = validator.summarize_validation_results(results)
-        if not summary_df.empty:
-            logger.info(f"Validation completed for {len(summary_df)} components across {len(results)} clusters")
-        
-        return results
+            model_config['quantiles'] = self.config['models'].get('quantiles', [0.1, 0.5, 0.9])
+            
+            # Extract available clusters from raw data
+            cluster_names = self._extract_cluster_names_from_raw_results(raw_prometheus_data)
+            if not cluster_names:
+                raise ValueError("No clusters found in Prometheus data")
+            
+            logger.info(f"Starting validation with TOTO model for {len(cluster_names)} clusters...")
+            
+            # Convert raw data directly to TOTO format for each cluster
+            cluster_toto_data = {}
+            for cluster_name in cluster_names:
+                try:
+                    # Convert directly to TOTO format - no inefficient TimeSeries conversion
+                    adapter_result = prometheus_adapter.convert_to_toto_format(raw_prometheus_data, cluster_name)
+                    
+                    # Extract MaskedTimeseries from adapter response (adapter returns dict with metadata)
+                    if isinstance(adapter_result, dict) and 'masked_timeseries' in adapter_result:
+                        toto_data = adapter_result['masked_timeseries']
+                        cluster_toto_data[cluster_name] = toto_data
+                        logger.debug(f"Successfully converted cluster {cluster_name} to TOTO format")
+                    else:
+                        logger.warning(f"Invalid TOTO adapter response format for cluster {cluster_name}")
+                        continue
+                        
+                except Exception as e:
+                    logger.warning(f"Failed to process cluster {cluster_name}: {e}")
+                    continue
+            
+            if not cluster_toto_data:
+                raise ValueError("No valid cluster data available after processing")
+            
+            from validation.toto_validator import validate_clusters_toto
+            results = validate_clusters_toto(cluster_toto_data, model_config)
+            
+            # Log summary
+            summary_df = validator.summarize_validation_results(results)
+            if not summary_df.empty:
+                logger.info(f"Validation completed for {len(summary_df)} components across {len(results)} clusters")
+            else:
+                logger.warning("Validation completed but no summary results generated")
+            
+            return results
+            
+        except Exception as e:
+            logger.error(f"Validation failed: {e}")
+            raise
     
     def run(self):
         """Run the forecasting agent continuously."""
@@ -362,7 +495,7 @@ class ForecastingAgent:
         
         # Check if validation is enabled
         enable_validation = self.config.get('validation', {}).get('enabled', False)
-        validation_interval = self.config.get('validation', {}).get('interval_cycles', 5)
+        validation_interval = self.config.get('validation', {}).get('interval_cycles', 3)
         cycle_count = 0
         
         while True:
@@ -380,15 +513,18 @@ class ForecastingAgent:
                 # Collect raw Prometheus data for clean architecture
                 raw_results = self.collect_raw_metrics()
                 
-                cluster_timeseries = None
                 if enable_validation and cycle_count % validation_interval == 0:
-                    cluster_timeseries = self.collect_metrics_timeseries()
                     logger.info("Running forecast validation...")
                     try:
-                        validation_results = self.validate_forecasts(cluster_timeseries)
-                        logger.info("Validation completed successfully")
+                        validation_results = self.validate_forecasts(raw_results)
+                        logger.info("TOTO validation completed successfully")
+                        
+                        # Store validation results for /model endpoint
+                        global exported_forecasts
+                        exported_forecasts['_validation_results'] = validation_results
+                        
                     except Exception as e:
-                        logger.error(f"Validation failed: {str(e)}")
+                        logger.error(f"TOTO validation failed: {str(e)}")
                 
                 # Generate forecasts using clean architecture
                 model_type = self.config['models'].get('type', 'nbeats')

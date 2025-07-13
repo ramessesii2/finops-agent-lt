@@ -63,43 +63,48 @@ data:
     collector:
       type: prometheus
       url: http://kof-mothership-promxy:8082
-      lookback_days: 2
-      step: "1h"
-      headers: {}
+      lookback_days: 4 
+      step: "30m"  # Consistent step size for all queries
       disable_ssl: true
+      timeout: 300
+      max_retries: 3
+      chunk_days: 0.25  # 6 hours for better granular processing, and so 1 for 24 hours
 
     # Model configuration
     models:
       type: toto
-      forecast_horizon: 14
-      nbeats:
-        freq: "h"
-        input_chunk_length: 24
-        output_chunk_length: 24
-        n_epochs: 50
-        activation: ReLU
-        random_state: 42
-        generic_architecture: true
-        likelihood: "QuantileRegression"
+      freq: "h" 
+      forecast_horizon: 7 # number of days ahead in future
+      quantiles: [0.1, 0.5, 0.9]
       toto:
         checkpoint: Datadog/Toto-Open-Base-1.0
         device: cpu              # or cuda
         context_length: 4096
-        num_samples: 512 
+        num_samples: 256
+        compile: True 
+
     # Optimizer configuration
     optimizer:
-      idle_threshold: 0.5
-      min_savings: 100.0
+      idle_threshold: 0.5  # 50% idle threshold
+      min_nodes: 1
+      min_savings: 100.0   # Minimum daily savings to report
       min_confidence: 0.8
-      lookback_days: 7
+
+      lookback_days: 7      # Days to analyze for optimization
 
     # Metrics configuration
     metrics:
       port: 8081
-      host: 0.0.0.0
+      host: "0.0.0.0"
       path: /metrics
 
     # Agent configuration
     agent:
-      interval: 300
+      interval: 300  # seconds between forecast updates
+
+    # Validation configuration
+    validation:
+      enabled: False
+      interval_cycles: 2  # Run validation every 5 forecast cycles
+      train_ratio: 0.7    # Use 70% for training, 30% for testing
       log_level: INFO 
