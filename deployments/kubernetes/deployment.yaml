@@ -71,7 +71,7 @@ data:
     # Model configuration
     models:
       type: toto
-      forecast_horizon: 7
+      forecast_horizon: 14
       nbeats:
         freq: "h"
         input_chunk_length: 24
@@ -85,7 +85,7 @@ data:
         checkpoint: Datadog/Toto-Open-Base-1.0
         device: cpu              # or cuda
         context_length: 4096
-        num_samples: 256 
+        num_samples: 512 
     # Optimizer configuration
     optimizer:
       idle_threshold: 0.5

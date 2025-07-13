@@ -216,8 +216,17 @@ class PrometheusToTotoAdapter:
         
         return MaskedTimeseries(
             series=series_data,
+            # The padding mask should be the same shape as the input series.
+            # It should be 0 to indicate padding and 1 to indicate valid values.
             padding_mask=padding_mask,
+            # The ID mask is used for packing unrelated time series along the Variate dimension.
+            # This is used in training, and can also be useful for large-scale batch inference in order to
+            # process time series of different numbers of variates using batches of a fixed shape.
+            # The ID mask controls the channel-wise attention; variates with different IDs cannot attend to each other.
+            # If you're not using packing, just set this to zeros.
             id_mask=id_mask,
+            # These timestamp features are not currently used by the model;
+            # however, they are reserved for future releases.
             timestamp_seconds=timestamp_seconds,
             time_interval_seconds=time_interval_seconds,
         )

@@ -1,7 +1,8 @@
 from typing import Dict, Any, List, Optional
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from prometheus_api_client import PrometheusConnect
 import logging
+import time
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -16,28 +17,100 @@ class PrometheusCollector:
         Args:
             config: Prometheus-specific configuration dictionary
         """
-        self.config = config  # Store config for later use
+        self.config = config
+        
+        # Simple configuration - no adaptive complexity
+        self.timeout = config.get('timeout', 300)  # Default 5 minutes
+        self.max_retries = config.get('max_retries', 3)
+        self.chunk_threshold_days = config.get('chunk_days', 1)  # Chunk large time ranges
+        
+        # Initialize Prometheus client
         self.prom = PrometheusConnect(
             url=config['url'],
             headers=config.get('headers', {}),
             disable_ssl=config.get('disable_ssl', False)
         )
-        # Timestamp of the most recent successful collection (for health checks)
+        
+        # Track successful collections for health monitoring
         self.last_collection: Optional[datetime] = None
-        logger.debug(f"Initialized PrometheusCollector with URL: {config['url']}")
+        logger.info(f"Initialized PrometheusCollector with URL: {config['url']}")
         
 
-    def _prom_query(self, promql: str, start_time: datetime, end_time: datetime):
-        """Run a range query and return the raw Prometheus response list."""
-        logger.debug("PromQL query: %s", promql)
+    def _execute_query(self, promql: str, start_time: datetime, end_time: datetime):
+        
         start = start_time.astimezone(timezone.utc).replace(tzinfo=None)
-        end   = end_time.astimezone(timezone.utc).replace(tzinfo=None)
-        return self.prom.custom_query_range(
-            query=promql,
-            start_time=start,
-            end_time=end,
-            step=self.config.get("step", "1m"),
-        )
+        end = end_time.astimezone(timezone.utc).replace(tzinfo=None)
+        
+        # Calculate time range duration
+        duration = end - start
+        duration_days = duration.total_seconds() / (24 * 3600)
+        
+        # Use chunking for large time ranges to handle big datasets reliably
+        if duration_days > self.chunk_threshold_days:
+            logger.info(f"Large time range detected ({duration_days:.1f} days), using chunked queries")
+            return self._execute_chunked_query(promql, start, end)
+        else:
+            return self._execute_single_query(promql, start, end)
+    
+    def _get_step_size(self) -> str:
+        """Get step size from configuration - no adaptive complexity."""
+        return self.config.get('step', '1h')
+    
+    def _execute_single_query(self, promql: str, start: datetime, end: datetime):
+        """Execute single query with retry logic and exponential backoff."""
+        step = self._get_step_size()
+        
+        for attempt in range(self.max_retries):
+            try:
+                logger.debug(f"Query attempt {attempt + 1}/{self.max_retries}: {promql}")
+                result = self.prom.custom_query_range(
+                    query=promql,
+                    start_time=start,
+                    end_time=end,
+                    step=step,
+                )
+                logger.debug(f"Query successful, returned {len(result)} series")
+                return result
+                
+            except Exception as e:
+                logger.warning(f"Query attempt {attempt + 1} failed: {str(e)}")
+                if attempt < self.max_retries - 1:
+                    # Exponential backoff: 2^attempt seconds
+                    sleep_time = 2 ** attempt
+                    logger.info(f"Retrying in {sleep_time} seconds...")
+                    time.sleep(sleep_time)
+                else:
+                    logger.error(f"All {self.max_retries} query attempts failed")
+                    raise
+    
+    def _execute_chunked_query(self, promql: str, start: datetime, end: datetime):
+        """Execute query in chunks for large time ranges - robust handling for big datasets."""
+        chunk_size = timedelta(days=self.chunk_threshold_days)
+        all_results = []
+        current_start = start
+        
+        chunk_count = 0
+        while current_start < end:
+            chunk_count += 1
+            current_end = min(current_start + chunk_size, end)
+            
+            logger.info(f"Processing chunk {chunk_count}: {current_start} to {current_end}")
+            
+            try:
+                chunk_result = self._execute_single_query(promql, current_start, current_end)
+                if chunk_result:
+                    all_results.extend(chunk_result)
+                    logger.debug(f"Chunk {chunk_count} returned {len(chunk_result)} series")
+                
+            except Exception as e:
+                logger.error(f"Chunk {chunk_count} failed: {str(e)}")
+                # Continue with other chunks rather than failing completely
+                continue
+            
+            current_start = current_end
+        
+        logger.info(f"Chunked query completed: {chunk_count} chunks, {len(all_results)} total series")
+        return all_results
 
     def collect_metrics_timeseries(self, start_time: datetime, end_time: datetime, promq: Dict[str, str]) -> Dict[str, list]:
         """
@@ -57,7 +130,7 @@ class PrometheusCollector:
         results: Dict[str, list] = {}
         for metric_key, promql in promq.items():
             try:
-                raw_result = self._prom_query(promql, start_time, end_time)
+                raw_result = self._execute_query(promql, start_time, end_time)
                 results[metric_key] = raw_result
             except Exception as e:
                 logger.error(f"Error collecting metric '{metric_key}': {e}")

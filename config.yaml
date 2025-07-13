@@ -2,10 +2,12 @@
 collector:
   type: prometheus
   url: http://localhost:8082
-  # TODO: Can't lookback more than 2 days because of the Cluster came up 2 days ago. Fix this.
-  lookback_days: 2
-  step: "1h"
+  lookback_days: 4 
+  step: "30m"  # Consistent step size for all queries
   disable_ssl: true
+  timeout: 300
+  max_retries: 3
+  chunk_days: 0.25  # 6 hours for better granular processing, and so 1 for 24 hours
 
 # Model configuration
 models:
@@ -40,7 +42,8 @@ models:
     checkpoint: Datadog/Toto-Open-Base-1.0
     device: cpu              # or cuda
     context_length: 4096
-    num_samples: 256 
+    num_samples: 256
+    compile: True 
 
 # Optimizer configuration
 optimizer:
@@ -63,7 +66,7 @@ agent:
 
 # Validation configuration
 validation:
-  enabled: true
+  enabled: false
   interval_cycles: 2  # Run validation every 5 forecast cycles
   train_ratio: 0.7    # Use 70% for training, 30% for testing
   log_level: INFO 

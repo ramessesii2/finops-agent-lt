@@ -134,9 +134,17 @@ class TOTOAdapter:
             # Run forecast
             forecast_result = forecaster.forecast(
                 masked_timeseries,
+                # We can set any number of timesteps into the future that we'd like to forecast. Because Toto is an autoregressive model,
+                # the inference time will be longer for longer forecasts. 
                 prediction_length=horizon,
+                # TOTOForecaster draws samples from a predicted parametric distribution. The more samples, the more stable and accurate the prediction.
+                # This is especially important if you care about accurate prediction intervals in the tails.
                 num_samples=self.config.get("num_samples", 256),
+                # TOTOForecaster also handles batching the samples in order to control memory usage.
+                # Set samples_per_batch as high as you can without getting OOMs for maximum performance.
+                # If you're doing batch inference, the effective batch size sent to the model is (batch_size x samples_per_batch).
                 samples_per_batch=self.config.get("samples_per_batch", 256),
+                # KV cache should significantly speed up inference, and in most cases should reduce memory usage too.
                 use_kv_cache=self.config.get("use_kv_cache", True),
             )
             
