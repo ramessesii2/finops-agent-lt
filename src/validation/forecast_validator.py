@@ -12,26 +12,24 @@ logger = logging.getLogger(__name__)
 
 
 class ForecastValidator:
-    """Validates forecast accuracy using train/test splits."""
+    """Validates forecast accuracy."""
     
     def __init__(self, train_ratio: float = 0.7):
-        """
-        Initialize validator.
+        """Initialize validator.
         
         Args:
-            train_ratio: Fraction of data to use for training (default 0.7 for 70/30 split)
+            train_ratio: Training data fraction (default 0.7)
         """
         self.train_ratio = train_ratio
         
     def split_timeseries(self, series: TimeSeries) -> Tuple[TimeSeries, TimeSeries]:
-        """
-        Split time series into train/test sets.
+        """Split time series into train/test sets.
         
         Args:
             series: Input time series
             
         Returns:
-            Tuple of (train_series, test_series)
+            (train_series, test_series) tuple
         """
         total_length = len(series)
         train_length = int(total_length * self.train_ratio)

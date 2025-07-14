@@ -15,13 +15,13 @@ NODE_IDLE_CAPACITY_SAVINGS = Gauge(
 )
 
 class IdleCapacityOptimizer(BaseOptimizer):
-    """Optimizer for identifying and recommending idle capacity reductions."""
+    """Identifies and recommends idle capacity reductions."""
     
     def __init__(self, config: Dict[str, Any]):
-        """Initialize idle capacity optimizer with configuration.
+        """Initialize idle capacity optimizer.
         
         Args:
-            config: Optimizer-specific configuration dictionary
+            config: Configuration dictionary
         """
         super().__init__(config)
         self.idle_threshold = config.get('idle_threshold', 0.5)  # 50% idle threshold
@@ -31,11 +31,10 @@ class IdleCapacityOptimizer(BaseOptimizer):
     def analyze(self, 
                 metrics: pd.DataFrame,
                 forecasts: Optional[Dict[str, pd.DataFrame]] = None) -> List[Dict[str, Any]]:
-        """
-        Analyze K8s node‑level metrics to identify idle capacity.
+        """Analyze node metrics to identify idle capacity.
         
         Args:
-            metrics: DataFrame with historical metrics (raw Prometheus format)
+            metrics: DataFrame with historical metrics
             forecasts: Optional dictionary of forecast DataFrames
             
         Returns:

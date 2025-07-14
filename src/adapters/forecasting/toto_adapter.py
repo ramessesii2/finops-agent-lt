@@ -9,12 +9,7 @@ from toto.inference.forecaster import TotoForecaster
 from toto.model.toto import Toto 
 
 class TOTOAdapter:
-    """Adapter for Datadog's *Toto* zero-shot forecasting model.
-
-    Converts a Darts ``TimeSeries`` into the tensor format expected by Toto
-    (``MaskedTimeseries``), runs zero-shot inference, then converts the result
-    back into the JSON schema.
-    """
+    """Adapter for Datadog's TOTO zero-shot forecasting model."""
 
     def __init__(self, config: Optional[Dict] = None):
         self.config = config or {}

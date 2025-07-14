@@ -12,9 +12,7 @@ class NBEATSAdapter:
         self.input_chunk_length = config.get("input_chunk_length", 24)
         self.output_chunk_length = config.get("output_chunk_length", 12)
         self.n_epochs = config.get("n_epochs", 100)
-        # Handle likelihood specified as a string in the YAML config by instantiating the
-        # corresponding Darts Likelihood class. Darts expects an *instance* of a Likelihood,
-        # not a plain string, otherwise attribute access like ``num_parameters`` will fail.
+        # Handle likelihood from config - instantiate from string if needed
         likelihood_cfg = config.get("likelihood", None)
         if isinstance(likelihood_cfg, str):
             try:
@@ -34,10 +32,9 @@ class NBEATSAdapter:
                         f"Unsupported likelihood string '{likelihood_cfg}'. "
                         "Supported: QuantileRegression, Poisson, Gaussian"
                     )
-                # Instantiate with sensible defaults (QR gets default quantiles 0.1,0.5,0.9)
                 likelihood_cfg = LikelihoodClass()
             except (ImportError, ValueError) as exc:
-                # Fallback: disable likelihood and warn – ensures model still trains.
+                # Fallback: disable likelihood and warn
                 import logging
                 logging.getLogger(__name__).warning(
                     "Could not instantiate likelihood '%s': %s. Proceeding without probabilistic forecasting.",

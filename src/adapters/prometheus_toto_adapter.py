@@ -1,19 +1,13 @@
-"""
-PrometheusToTotoAdapter: Direct conversion from raw Prometheus JSON to TOTO tensor format.
-
-This adapter eliminates the inefficient Raw JSON → TimeSeries → Tensors conversion
-by going directly from Raw JSON → Tensors, filtered by cluster name.
-"""
+"""Direct conversion from raw Prometheus JSON to TOTO tensor format."""
 import logging
 from typing import Dict, Any, List
 import torch
 import pandas as pd
 
-# Import TOTO's MaskedTimeseries - conditional import to handle missing toto module
 try:
     from toto.data.util.dataset import MaskedTimeseries
 except ImportError:
-    # Create a mock class for testing when toto module is not available
+    # Mock for testing
     class MaskedTimeseries:
         def __init__(self, series, padding_mask, id_mask, timestamp_seconds, time_interval_seconds):
             self.series = series
@@ -24,10 +18,9 @@ except ImportError:
 
 
 class PrometheusToTotoAdapter:
-    """Adapter to convert raw Prometheus JSON directly to TOTO tensor format."""
+    """Convert raw Prometheus JSON to TOTO tensor format."""
     
     def __init__(self):
-        """Initialize the adapter."""
         self.logger = logging.getLogger(self.__class__.__name__)
     
     def convert_to_toto_format(

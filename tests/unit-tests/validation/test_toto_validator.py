@@ -1,8 +1,4 @@
-"""
-Test-driven development for TOTO validation functionality.
-
-Following coding-conventions.md: Tests must be written first before any production code.
-"""
+"""Tests for TOTO validation functionality."""
 
 import unittest
 from unittest.mock import Mock, patch, MagicMock
@@ -11,18 +7,15 @@ import torch
 import sys
 import os
 
-# Add src directory to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 
 class TestTotoValidator(unittest.TestCase):
     
     def setUp(self):
-        """Set up test fixtures with realistic data."""
-        # Create realistic TOTO data structure with actual tensor operations
+        """Set up test fixtures."""
         self.real_toto_data = self._create_realistic_toto_data()
         
-        # Create mock for comparison where needed
         self.mock_toto_data = Mock()
         self.mock_toto_data.series = torch.randn(1, 24, 3)  # [batch, time, features]
         self.mock_toto_data.padding_mask = torch.ones(1, 24, dtype=torch.bool)
@@ -36,8 +29,7 @@ class TestTotoValidator(unittest.TestCase):
         }
     
     def _create_realistic_toto_data(self):
-        """Create realistic TOTO data with actual patterns for testing core behaviors."""
-        # Import the actual MaskedTimeseries or use fallback
+        """Create realistic TOTO data for testing."""
         try:
             from toto.data.util.dataset import MaskedTimeseries
         except ImportError:
@@ -84,7 +76,7 @@ class TestTotoValidator(unittest.TestCase):
         )
     
     def test_split_toto_data_should_split_70_30_with_real_data(self):
-        """Test TOTO data splitting with realistic data and verify data integrity."""
+        """Test TOTO data splitting with data and verify data integrity."""
         from validation.toto_validator import split_toto_data
         
         # Test with real data

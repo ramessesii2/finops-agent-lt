@@ -1,20 +1,10 @@
-"""
-Metric Type Configuration for Forecasting Agent
-
-Centralized definition of metric types for proper handling across all forecasting models.
-This ensures consistent behavior between TOTO, NBEATS, Prophet, and future models.
-
-Following clean architecture principles:
-- Single source of truth for metric classification
-- Reusable across all forecasting adapters
-- Easy to extend with new metric types
-"""
+"""Metric type configuration and classification."""
 from typing import Set, Dict, Any
 from enum import Enum
 
 
 class MetricAggregationLevel(Enum):
-    """Enumeration of metric aggregation levels."""
+    """Metric aggregation levels."""
     CLUSTER = "cluster"
     NODE = "node"
     POD = "pod"
@@ -22,12 +12,7 @@ class MetricAggregationLevel(Enum):
 
 
 class MetricTypeClassifier:
-    """
-    Centralized classifier for metric types and their aggregation levels.
-    
-    This class provides consistent metric classification across all forecasting models,
-    ensuring proper handling of cluster-level vs node-level metrics.
-    """
+    """Classifier for metric types and aggregation levels."""
     
     # Cluster-level metrics: Single entry per cluster with node="cluster-aggregate"
     CLUSTER_LEVEL_METRICS: Set[str] = {

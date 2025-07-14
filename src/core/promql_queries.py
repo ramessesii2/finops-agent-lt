@@ -1,13 +1,8 @@
-"""
-PromQL Query Configuration for Forecasting Agent
-
-Simple, centralized PromQL query definitions.
-Following coding-conventions.md: "Keep it simple!"
-"""
+"""PromQL query configuration for forecasting agent."""
 from typing import Dict
 
 
-# === CLUSTER-LEVEL QUERIES ===
+# Cluster-level queries
 CLUSTER_QUERIES = {
     "cost_usd_per_cluster": "sum(node_total_hourly_cost) by (clusterName)",
     "cpu_pct_per_cluster": "100 * (1 - avg by (clusterName) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])))",
@@ -16,7 +11,7 @@ CLUSTER_QUERIES = {
     "mem_total_gb_per_cluster": "sum by (clusterName) (node_memory_MemTotal_bytes) / 1024 / 1024 / 1024",
 }
 
-# === NODE-LEVEL QUERIES ===
+# Node-level queries
 NODE_QUERIES = {
     "cost_usd_per_node": "sum by (clusterName, node) (node_total_hourly_cost)",
     "cpu_pct_per_node": "100 * (1 - avg by (clusterName, nodename) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])))",

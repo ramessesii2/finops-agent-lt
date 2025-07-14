@@ -4,34 +4,30 @@ from prometheus_api_client import PrometheusConnect
 import logging
 import time
 
-# Set up logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 class PrometheusCollector:
-    """Prometheus metrics collector implementation."""
+    """Prometheus metrics collector."""
     
     def __init__(self, config: Dict[str, Any]):
-        """Initialize Prometheus collector with configuration.
+        """Initialize Prometheus collector.
         
         Args:
-            config: Prometheus-specific configuration dictionary
+            config: Configuration dictionary
         """
         self.config = config
         
-        # Simple configuration - no adaptive complexity
-        self.timeout = config.get('timeout', 300)  # Default 5 minutes
+        self.timeout = config.get('timeout', 300)
         self.max_retries = config.get('max_retries', 3)
-        self.chunk_threshold_days = config.get('chunk_days', 1)  # Chunk large time ranges
+        self.chunk_threshold_days = config.get('chunk_days', 1)
         
-        # Initialize Prometheus client
         self.prom = PrometheusConnect(
             url=config['url'],
             headers=config.get('headers', {}),
             disable_ssl=config.get('disable_ssl', False)
         )
         
-        # Track successful collections for health monitoring
         self.last_collection: Optional[datetime] = None
         logger.info(f"Initialized PrometheusCollector with URL: {config['url']}")
         
@@ -45,7 +41,6 @@ class PrometheusCollector:
         duration = end - start
         duration_days = duration.total_seconds() / (24 * 3600)
         
-        # Use chunking for large time ranges to handle big datasets reliably
         if duration_days > self.chunk_threshold_days:
             logger.info(f"Large time range detected ({duration_days:.1f} days), using chunked queries")
             return self._execute_chunked_query(promql, start, end)
@@ -115,7 +110,7 @@ class PrometheusCollector:
     def collect_metrics_timeseries(self, start_time: datetime, end_time: datetime, promq: Dict[str, str]) -> Dict[str, list]:
         """
         Collect multiple Prometheus metrics and return the Prometheus query
-        results so that downstream components can decide how to post-process them.
+        results 
 
         Args:
             start_time: Start of the query range (datetime)
@@ -166,7 +161,7 @@ class PrometheusCollector:
             Dictionary with health status and details
         """
         try:
-            # Use a lightweight query to check connectivity
+
             self.prom.check_prometheus_connection()
             status = "healthy"
         except Exception as e:

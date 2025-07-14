@@ -1,11 +1,4 @@
-"""
-Forecast Format Converter: Pure function to convert TOTO forecast output to cluster-grouped Prometheus format.
-
-This module follows clean architecture principles with clear separation of concerns:
-- Input: Pure TOTO forecast output
-- Output: Cluster-grouped Prometheus-style format
-- Pure function with no side effects
-"""
+"""Convert TOTO forecast output to cluster-grouped Prometheus format."""
 import logging
 from typing import Dict, Any, List, Optional
 import math
@@ -13,31 +6,24 @@ from core.metric_types import MetricTypeClassifier
 
 
 class ForecastFormatConverter:
-    """Pure converter for transforming TOTO forecast output to cluster-grouped Prometheus format."""
+    """Convert TOTO forecast output to cluster-grouped format."""
     
     def __init__(self):
-        """Initialize the converter."""
         self.logger = logging.getLogger(self.__class__.__name__)
         
-        # Import MetricTypeClassifier for dynamic naming standards
         from core.metric_types import MetricTypeClassifier, MetricAggregationLevel
         self.metric_classifier = MetricTypeClassifier()
         self.MetricAggregationLevel = MetricAggregationLevel
     
     def _get_forecast_name(self, metric_name: str) -> str:
-        """
-        Generate forecast metric name by simply appending _forecast suffix.
-        
-        Keep it simple - just append _forecast to the input metric name.
-        This follows clean architecture principles with minimal transformation.
+        """Generate forecast metric name by appending _forecast suffix.
         
         Args:
-            metric_name: Original metric name from input series
+            metric_name: Original metric name
             
         Returns:
-            Forecast metric name: {metric_name}_forecast
+            Forecast metric name
         """
-        # Keep it simple - just append _forecast suffix
         return f"{metric_name}_forecast"
     
     def convert_to_cluster_grouped_format(
@@ -48,12 +34,10 @@ class ForecastFormatConverter:
         extra_labels: Optional[Dict[str, str]] = None
     ) -> List[Dict[str, Any]]:
         """
-        Convert pure TOTO forecast output to cluster-grouped Prometheus format.
-        
-        This is a pure function that transforms forecast data without side effects.
+        Convert TOTO forecast output to cluster-grouped Prometheus format.
         
         Args:
-            toto_forecast_output: Pure TOTO forecast output from TOTOAdapter.forecast()
+            toto_forecast_output: TOTO forecast output from TOTOAdapter.forecast()
             cluster_name: Name of the cluster for labeling
             node_name: Optional node name (defaults to "aggregated")
             extra_labels: Optional additional labels to include
@@ -88,7 +72,6 @@ class ForecastFormatConverter:
         
         metric_names = toto_forecast_output.get('metric_names', [])
         
-        # Debug logging to understand actual format
         self.logger.debug(f"TOTO output keys: {list(toto_forecast_output.keys())}")
         self.logger.debug(f"Series results type: {type(series_results)}, length: {len(series_results) if series_results else 0}")
         self.logger.debug(f"Timestamps type: {type(timestamps)}, length: {len(timestamps) if timestamps else 0}")
@@ -174,9 +157,7 @@ class ForecastFormatConverter:
     
     def _format_horizon(self, horizon_hours: int) -> str:
         """
-        Format horizon in human-readable format.
-        
-        Pure function to convert hours to appropriate unit string.
+        Format horizon
         
         Args:
             horizon_hours: Horizon in hours

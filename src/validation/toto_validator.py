@@ -5,11 +5,10 @@ import torch
 
 logger = logging.getLogger(__name__)
 
-# Import TOTO's MaskedTimeseries with fallback for testing
 try:
     from toto.data.util.dataset import MaskedTimeseries
 except ImportError:
-    # Mock class for testing when toto module is not available
+    # Mock for testing
     class MaskedTimeseries:
         def __init__(self, series, padding_mask, id_mask, timestamp_seconds, time_interval_seconds):
             self.series = series
@@ -20,32 +19,27 @@ except ImportError:
 
 
 def split_toto_data(toto_data: MaskedTimeseries, train_ratio: float = 0.7) -> Tuple[MaskedTimeseries, MaskedTimeseries]:
-    """Split TOTO MaskedTimeseries data into train/test sets.
-    
-    Pure function that splits TOTO data according to train_ratio.
+    """Split TOTO data into train/test sets.
     
     Args:
         toto_data: TOTO MaskedTimeseries object
-        train_ratio: Fraction for training data (default 0.7)
+        train_ratio: Training data fraction (default 0.7)
         
     Returns:
-        Tuple of (train_data, test_data) as MaskedTimeseries objects
+        (train_data, test_data) tuple
     """
     if toto_data.series is None:
         raise ValueError("TOTO data series is None")
     
-    # Get data dimensions
-    series_length = toto_data.series.shape[1]  # Assuming shape is [batch, time, features]
+    series_length = toto_data.series.shape[1]  # Shape: [batch, time, features]
     train_length = int(series_length * train_ratio)
     
     if train_length == 0 or train_length >= series_length:
         raise ValueError(f"Invalid split: train_length={train_length}, total_length={series_length}")
     
-    # Split the series tensor
     train_series = toto_data.series[:, :train_length, :]
     test_series = toto_data.series[:, train_length:, :]
     
-    # Split corresponding masks and timestamps
     train_padding_mask = toto_data.padding_mask[:, :train_length] if toto_data.padding_mask is not None else None
     test_padding_mask = toto_data.padding_mask[:, train_length:] if toto_data.padding_mask is not None else None
     
@@ -73,31 +67,27 @@ def split_toto_data(toto_data: MaskedTimeseries, train_ratio: float = 0.7) -> Tu
 
 
 def extract_actual_values(toto_data: MaskedTimeseries) -> Dict[str, np.ndarray]:
-    """Extract actual values from TOTO MaskedTimeseries data.
-    
-    Pure function that converts TOTO tensor data to dictionary of numpy arrays.
+    """Extract actual values from TOTO data.
     
     Args:
         toto_data: TOTO MaskedTimeseries object
         
     Returns:
-        Dictionary mapping metric names to numpy arrays of values
+        Dict mapping metric names to value arrays
     """
     if toto_data.series is None:
         return {}
     
     values = {}
-    # Convert tensor to numpy array
     series_array = toto_data.series.cpu().numpy() if hasattr(toto_data.series, 'cpu') else toto_data.series
     
     if len(series_array.shape) != 3:
         logger.warning(f"Unexpected series shape: {series_array.shape}, expected [batch, time, features]")
         return {}
     
-    # Extract values for each feature/metric
     for feature_idx in range(series_array.shape[2]):
         metric_name = f"metric_{feature_idx}"
-        values[metric_name] = series_array[0, :, feature_idx]  # Take first batch
+        values[metric_name] = series_array[0, :, feature_idx]
     
     return values
 
@@ -105,14 +95,12 @@ def extract_actual_values(toto_data: MaskedTimeseries) -> Dict[str, np.ndarray]:
 def extract_forecast_values(forecast_result: Dict[str, Any], quantile: str = "q0.50") -> Dict[str, np.ndarray]:
     """Extract forecast values from TOTO adapter result.
     
-    Pure function that extracts forecast values for specified quantile.
-    
     Args:
         forecast_result: Result from TOTOAdapter.forecast()
-        quantile: Which quantile to extract (default "q0.50")
+        quantile: Quantile to extract (default "q0.50")
         
     Returns:
-        Dictionary mapping metric names to forecast arrays
+        Dict mapping metric names to forecast arrays
     """
     if not isinstance(forecast_result, dict):
         logger.warning(f"Expected dict forecast result, got {type(forecast_result)}")
@@ -122,11 +110,9 @@ def extract_forecast_values(forecast_result: Dict[str, Any], quantile: str = "q0
     
     for metric_name, metric_data in forecast_result.items():
         if isinstance(metric_data, dict) and quantile in metric_data:
-            # Extract y values from quantile data
             values = [point.get('y', 0) for point in metric_data[quantile]]
             forecast_values[metric_name] = np.array(values)
         elif isinstance(metric_data, (list, np.ndarray)):
-            # Direct array format
             forecast_values[metric_name] = np.array(metric_data)
         else:
             logger.warning(f"Unsupported forecast format for metric {metric_name}: {type(metric_data)}")
@@ -136,8 +122,6 @@ def extract_forecast_values(forecast_result: Dict[str, Any], quantile: str = "q0
 
 def calculate_mape(actual: np.ndarray, predicted: np.ndarray) -> float:
     """Calculate Mean Absolute Percentage Error.
-    
-    Pure function for MAPE calculation with zero-division handling.
     
     Args:
         actual: Actual values
@@ -152,10 +136,9 @@ def calculate_mape(actual: np.ndarray, predicted: np.ndarray) -> float:
     if len(actual) != len(predicted):
         raise ValueError(f"Arrays must have same length: actual={len(actual)}, predicted={len(predicted)}")
     
-    # Avoid division by zero
     mask = actual != 0
     if not np.any(mask):
-        logger.warning("All actual values are zero, cannot calculate MAPE")
+        logger.warning("All actual values are zero, returning infinite MAPE")
         return float('inf')
     
     mape = np.mean(np.abs((actual[mask] - predicted[mask]) / actual[mask])) * 100
@@ -164,8 +147,6 @@ def calculate_mape(actual: np.ndarray, predicted: np.ndarray) -> float:
 
 def calculate_mae(actual: np.ndarray, predicted: np.ndarray) -> float:
     """Calculate Mean Absolute Error.
-    
-    Pure function for MAE calculation.
     
     Args:
         actual: Actual values
@@ -186,8 +167,6 @@ def calculate_mae(actual: np.ndarray, predicted: np.ndarray) -> float:
 def calculate_rmse(actual: np.ndarray, predicted: np.ndarray) -> float:
     """Calculate Root Mean Squared Error.
     
-    Pure function for RMSE calculation.
-    
     Args:
         actual: Actual values
         predicted: Predicted values
@@ -205,16 +184,14 @@ def calculate_rmse(actual: np.ndarray, predicted: np.ndarray) -> float:
 
 
 def calculate_validation_metrics(actual: np.ndarray, predicted: np.ndarray) -> Dict[str, float]:
-    """Calculate all validation metrics for actual vs predicted values.
-    
-    Pure function that combines metric calculations.
+    """Calculate all validation metrics.
     
     Args:
         actual: Actual values
         predicted: Predicted values
         
     Returns:
-        Dictionary with mape, mae, and rmse values
+        Dict with mape, mae, and rmse values
     """
     if len(actual) == 0 or len(predicted) == 0:
         logger.warning("Empty arrays provided for metric calculation")
@@ -228,39 +205,32 @@ def calculate_validation_metrics(actual: np.ndarray, predicted: np.ndarray) -> D
 
 
 def validate_cluster_toto(adapter, toto_data: MaskedTimeseries, train_ratio: float = 0.7) -> Dict[str, Dict[str, float]]:
-    """Validate forecasts for a single cluster using TOTO format.
+    """Validate forecasts for a single cluster.
     
     Args:
         adapter: TOTOAdapter instance
-        toto_data: TOTO MaskedTimeseries data for the cluster
-        train_ratio: Split ratio for train/test
+        toto_data: TOTO data for the cluster
+        train_ratio: Train/test split ratio
         
     Returns:
-        Dictionary with validation metrics per component
+        Dict with validation metrics per component
     """
     try:
-        # Split TOTO data for train/test validation
         train_data, test_data = split_toto_data(toto_data, train_ratio)
         
-        # Get test period length
         test_length = test_data.series.shape[1] if test_data.series is not None else 0
         if test_length == 0:
             return {"error": "No test data available"}
         
-        # Generate forecast using training data
         forecast_result = adapter.forecast(train_data, horizon=test_length)
         
-        # Extract actual and forecast values
         actual_values = extract_actual_values(test_data)
         forecast_values = extract_forecast_values(forecast_result)
-        
-        # Calculate validation metrics for each metric
         cluster_metrics = {}
         for metric_name, actual_vals in actual_values.items():
             if metric_name in forecast_values:
                 predicted_vals = forecast_values[metric_name]
                 
-                # Ensure arrays have same length
                 min_length = min(len(actual_vals), len(predicted_vals))
                 if min_length > 0:
                     actual_vals = actual_vals[:min_length]

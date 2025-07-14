@@ -28,10 +28,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Use centralized PromQL configuration (simple and clean)
 PROMQL = get_all_queries()
 
 exported_forecasts: Dict[str, Dict[str, Any]] = {}
+active_clusters: set = set()  # Track actual cluster names separately
 
 def _start_forecast_server(host: str, port: int):
     """Start a background HTTP server exposing forecast JSON."""
@@ -128,18 +128,19 @@ def _start_forecast_server(host: str, port: int):
         def do_GET(self):
             if self.path == "/clusters" or self.path == "/clusters/":
                 # List all available clusters
-                cluster_list = list(exported_forecasts.keys())
+                cluster_list = list(active_clusters)
                 self._send_json({
                     "clusters": cluster_list,
                     "count": len(cluster_list)
                 })
             elif self.path == "/metrics" or self.path == "/metrics/":
-                
+                # Filter out internal keys from metrics response
+                cluster_metrics = {k: v for k, v in exported_forecasts.items() if not k.startswith('_')}
                 self._send_json({
-                    "metrics": exported_forecasts,
-                    "clusters_count": len(exported_forecasts),
+                    "metrics": cluster_metrics,
+                    "clusters_count": len(active_clusters),
                     "total_forecast_entries": sum(len(forecasts) if isinstance(forecasts, list) else 1 
-                                                 for forecasts in exported_forecasts.values())
+                                                 for forecasts in cluster_metrics.values())
                 })
             elif self.path == "/model" or self.path == "/model/":
                 # Return validation results and model information
@@ -147,11 +148,11 @@ def _start_forecast_server(host: str, port: int):
             elif self.path.startswith("/metrics/"):
                 # Return metrics for specific cluster
                 cluster = self.path[len("/metrics/"):]
-                if cluster in exported_forecasts and cluster:
+                if cluster in active_clusters and cluster in exported_forecasts:
                     cluster_forecasts = exported_forecasts[cluster]
                     self._send_json(cluster_forecasts)
                 else:
-                    self._send_json({"error": f"cluster '{cluster}' not found", "available_clusters": list(exported_forecasts.keys())}, status=404)
+                    self._send_json({"error": f"cluster '{cluster}' not found", "available_clusters": list(active_clusters)}, status=404)
             else:
                 # Health check or default endpoint
                 self._send_json({
@@ -162,7 +163,7 @@ def _start_forecast_server(host: str, port: int):
                         "/metrics": "Get all metrics from all clusters",
                         "/metrics/{clusterName}": "Get forecasts for specific cluster"
                     },
-                    "active_clusters": len(exported_forecasts)
+                    "active_clusters": len(active_clusters)
                 })
 
         def log_message(self, *args, **kwargs):
@@ -244,7 +245,7 @@ class ForecastingAgent:
             raise
 
     def generate_forecast_TOTO(self, raw_results: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
-        """Generate TOTO forecast for all clusters using clean architecture.
+        """Generate TOTO forecast for all clusters
         - PrometheusToTotoAdapter: converts raw JSON to MaskedTimeseries tensors
         - TOTOAdapter.forecast(): pure forecasting logic only
         - ForecastFormatConverter: transforms TOTO output to cluster-grouped format
@@ -271,7 +272,7 @@ class ForecastingAgent:
             }
         """
         try:
-            # Step 1: Convert raw Prometheus JSON to multi-cluster tensors (clean data conversion)
+            # Convert raw Prometheus JSON to multi-cluster tensors
             prometheus_to_toto = PrometheusToTotoAdapter()
             
             # Extract cluster names from raw results
@@ -306,7 +307,7 @@ class ForecastingAgent:
             if not multi_cluster_data:
                 raise ValueError("No clusters could be successfully converted")
             
-            # Step 3: TOTO forecasting for each cluster 
+            # TOTO forecasting for each cluster 
             model_config = self.config['models'].get('toto', {})
             toto_adapter = TOTOAdapter(model_config)
             quantiles = self.config['models'].get('quantiles', [0.1, 0.5, 0.9])
@@ -337,7 +338,7 @@ class ForecastingAgent:
                 
                 cluster_toto_forecasts[cluster_name] = toto_forecast
             
-            # Step 4: Transform TOTO output to cluster-grouped format (clean separation)
+            # Step 4: Transform TOTO output to cluster-grouped format
             format_converter = ForecastFormatConverter()
             cluster_grouped_results = {}
             
@@ -508,9 +509,9 @@ class ForecastingAgent:
                     time.sleep(60)
                     continue
                 
-                logger.info("Collecting metrics and generating forecasts...")
+                logger.info("Collecting metrics...")
                 
-                # Collect raw Prometheus data for clean architecture
+                # Collect raw Prometheus data
                 raw_results = self.collect_raw_metrics()
                 
                 if enable_validation and cycle_count % validation_interval == 0:
@@ -526,18 +527,18 @@ class ForecastingAgent:
                     except Exception as e:
                         logger.error(f"TOTO validation failed: {str(e)}")
                 
-                # Generate forecasts using clean architecture
                 model_type = self.config['models'].get('type', 'nbeats')
                 
                 if model_type == 'toto':
-                    # Clean architecture: Raw JSON → Tensors → TOTO forecast → Cluster-grouped format
-                    logger.info("Generating TOTO forecasts using clean architecture...")
+                    # Raw JSON → Tensors → TOTO forecast → Cluster-grouped format
+                    logger.info("Generating TOTO forecasts ...")
                     cluster_grouped_forecasts = self.generate_forecast_TOTO(raw_results)
                     
                     # Update exported forecasts with cluster-grouped results
                     for cluster_name, forecast_entries in cluster_grouped_forecasts.items():
                         exported_forecasts[cluster_name] = forecast_entries
-                        logger.info(f"Generated clean architecture forecast for cluster: {cluster_name}")
+                        active_clusters.add(cluster_name)
+                        logger.info(f"Generated forecast for cluster: {cluster_name}")
                         
                 else:
                     # For NBEATS, fall back to TimeSeries-based approach
@@ -547,6 +548,7 @@ class ForecastingAgent:
                     for cluster, ts in cluster_timeseries.items():
                         forecast = self.generate_forecast_NBEATS(ts)
                         exported_forecasts[cluster] = forecast
+                        active_clusters.add(cluster)
                         logger.info(f"Generated NBEATS forecast for cluster: {cluster}")
                 
                 api_url = f"http://{api_host}:{api_port}/metrics/{{clustername}}"

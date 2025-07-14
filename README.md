@@ -1,178 +1,220 @@
 # Forecasting Agent
 
-FinOps forecasting agent that continuously ingests cost and utilization metrics from Prometheus, applies advanced time-series forecasting models (NBEATS, Datadog TOTO), and provides accurate predictions with built-in validation and monitoring capabilities.
+FinOps forecasting agent that ingests Kubernetes cost/utilization metrics from Prometheus and generates forecasts using Datadog's TOTO zero-shot model. 
 
-## ✨ Key Features
+> Currently in development - deployment files work as-is, just build Docker image, push, and apply deployment.
 
-- **🔄 Continuous Operation**: Runs as a service with configurable collection intervals
-- **🤖 Multiple Models**: Support for NBEATS and Datadog's TOTO zero-shot forecasting
-- **📊 Built-in Validation**: 70/30 train/test split with MAPE, MAE, RMSE accuracy metrics
-- **🔍 Health Monitoring**: Prometheus connectivity checks and graceful error handling
-- **🌐 HTTP API**: RESTful endpoints for forecast data and cluster metrics
-- **⚙️ Configurable**: YAML-based configuration for all components
-- **🚀 Cloud-Native**: Kubernetes-ready with Docker deployment support
+**Note**: 
+- Validation & Optimizers are not working at the moment.
+- NBEATS adapter specific code will be removed completely.
 
 ## Architecture
 
 ![Architecture](./docs/architecture.png)
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 forecasting-agent/
 ├── src/
-│   └── forecasting_agent/
-│       ├── main.py                    # Main application entry point
-│       ├── collectors/
-│       │   └── prometheus.py          # Prometheus metrics collector
-│       ├── adapters/
-│       │   ├── forecasting/
-│       │   │   ├── nbeats_adapter.py  # NBEATS forecasting model
-│       │   │   ├── toto_adapter.py    # Datadog TOTO zero-shot model
-│       │   │   └── prophet_adapter.py # Prophet forecasting model
-│       │   └── prometheus_timeseries_adapter.py # Data conversion utilities
-│       ├── validation/
-│       │   └── forecast_validator.py  # Model accuracy validation
-│       └── optimizers/
-│           └── idle_capacity.py       # Cost optimization logic
-├── toto/                              # Datadog TOTO model (git submodule)
-├── tests/
-│   └── test_toto_adapter.py          # Unit tests
+│   ├── main.py                        # Main application entry point
+│   ├── collectors/
+│   │   └── prometheus.py              # Prometheus metrics collector
+│   ├── adapters/
+│   │   ├── forecasting/
+│   │   │   ├── toto_adapter.py        # Datadog TOTO zero-shot model
+│   │   │   ├── nbeats_adapter.py      # NBEATS forecasting model
+│   │   │   └── prophet_adapter.py     # Prophet forecasting model
+│   │   ├── prometheus_toto_adapter.py # Direct Prometheus to TOTO conversion
+│   │   └── forecast_format_converter.py # Output format conversion
+│   ├── core/
+│   │   ├── metric_types.py            # Metric classification
+│   │   └── promql_queries.py          # PromQL query definitions
+│   ├── validation/
+│   │   └── forecast_validator.py      # Model accuracy validation
+│   └── optimizers/
+│       └── idle_capacity.py           # Cost optimization logic
 ├── config.yaml                        # Main configuration file
-├── pyproject.toml                     # Python dependencies
-└── deployments/
-    └── kubernetes/
-        └── deployment.yaml            # Kubernetes deployment
+├── deployments/
+│   └── kubernetes/
+│       └── deployment.yaml            # Kubernetes deployment
+└── docs/
+    ├── architecture.png               # Architecture diagram
+    ├── appendix.md                    # Additional documentation
+    └── TOTO_TENSOR_SHAPE_GUIDE.md     # TOTO tensor format guide
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
-### Prerequisites
-- Python 3.10+
-- Prometheus server with cost/utilization metrics
-- (Optional) CUDA-compatible GPU for TOTO model
-
-### Installation
+### Docker Deployment
 
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd forecasting-agent
+# Build and push Docker image
+docker build -t forecasting-agent:latest .
+docker push your-registry/forecasting-agent:latest
 
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+# Apply Kubernetes deployment
+kubectl apply -f deployments/kubernetes/deployment.yaml
+```
 
+### Local Development
+
+```bash
 # Install dependencies
 pdm install
-# OR using pip:
-pip install -e .
 
-# Install TOTO model (optional)
-git submodule update --init --recursive
+# Configure Prometheus endpoint in config.yaml
+# Run the agent
+PYTHONPATH=.:src pdm run python src/main.py --config config.yaml
+
 ```
 
-### Basic Usage
+## Configuration
 
-```bash
-# Configure your Prometheus endpoint in config.yaml
-# Then run the agent
-python -m forecasting_agent.main config.yaml
-```
-
-The agent will:
-1. 🔄 Continuously collect metrics from Prometheus
-2. 🤖 Generate forecasts using your chosen model
-3. 📊 Validate accuracy using train/test splits
-4. 🌐 Serve results via HTTP API at `http://localhost:8081`
-
-## ⚙️ Configuration
-
-The agent is configured via `config.yaml`. Here's the current configuration structure:
+Configure via `config.yaml`:
 
 ```yaml
 # Prometheus data source
 collector:
   type: prometheus
   url: http://localhost:8082
-  lookback_days: 2
-  step: "1h"
   disable_ssl: true
+  lookback_days: 4
+  step: "30m"
+  timeout: 300
+  max_retries: 3
 
-# Model selection and parameters
+# Model configuration
 models:
-  type: toto  # or 'nbeats'
-  freq: "h"
-  forecast_horizon: 7  # days
+  type: toto
+  forecast_horizon: 7  # days ahead
   quantiles: [0.1, 0.5, 0.9]
   
-  # NBEATS-specific settings
-  nbeats:
-    input_chunk_length: 24
-    output_chunk_length: 24
-    n_epochs: 50
-    
-  # TOTO-specific settings
   toto:
     checkpoint: Datadog/Toto-Open-Base-1.0
     device: cpu  # or cuda
     context_length: 4096
     num_samples: 256
 
-# Validation settings
-validation:
-  enabled: true
-  interval_cycles: 2  # Run validation every 2 forecast cycles
-  train_ratio: 0.7    # 70% training, 30% testing
-
 # Agent runtime settings
 agent:
   interval: 300  # seconds between forecast updates
 
-# HTTP API settings
-metrics:
-  host: 0.0.0.0
+# API server
+api:
+  host: "0.0.0.0"
   port: 8081
 ```
 
-## 🔌 API Endpoints
+## API Endpoints
 
-The agent exposes the following HTTP endpoints:
+HTTP API available at `http://localhost:8081`:
 
-### Forecast Data
-- **`GET /metrics/{cluster_name}`** - Get forecast JSON for a specific cluster
-  ```json
-  {
-    "cost_usd": {
-      "q0.10": [{"x": "2024-01-01T00:00:00Z", "y": 1.23}],
-      "q0.50": [{"x": "2024-01-01T00:00:00Z", "y": 1.45}],
-      "q0.90": [{"x": "2024-01-01T00:00:00Z", "y": 1.67}]
-    },
-    "cpu_pct": { /* similar structure */ },
-    "mem_pct": { /* similar structure */ }
+### Get Cluster Forecasts
+`GET /metrics/{cluster_name}`
+
+Returns forecast data for a specific cluster:
+
+```json
+
+{
+  "forecasts": [
+    {
+      "metric": {
+        "__name__": "cost_usd_per_cluster_forecast",
+        "clusterName": "aws-ramesses-regional-0",
+        "node": "cluster-aggregate",
+        "quantile": "0.10",
+        "horizon": "14d"
+      },
+
+      "values": [10.5, 11.2, 9.8],
+      "timestamps": [1640995200000, 1640998800000, 1641002400000]
+    }
+    {
+      .....
+    }
+  ],
+  "metadata": {
+    "total_metrics": 9,
+    "total_forecasts": 63,
+    "horizon_days": 7,
+    "quantiles": [
+      0.1,
+      0.5,
+      0.9
+    ]
   }
-  ```
+}
+```
 
-### Cluster List
-- **`GET /metrics`** - List available clusters
-  ```json
-  {"clusters": ["production", "staging"]}
-  ```
+### List All Metrics Across Clusters
+`GET /metrics`
 
-## 🤖 Supported Models
+Returns all available metrics across all clusters:
 
-### NBEATS (Neural Basis Expansion Analysis)
-- **Type**: Deep learning model for time series forecasting
-- **Best for**: Regular patterns, seasonal data
-- **Configuration**: `models.type: nbeats`
-- **GPU**: Optional (CPU fallback available)
+```json
+{
+  "metrics": {
+    "aws-ramesses-regional-0": {
+      "forecasts": [
+        {
+          "metric": {
+            "__name__": "cost_usd_per_cluster_forecast",
+            "clusterName": "aws-ramesses-regional-0",
+            "node": "cluster-aggregate",
+            "quantile": "0.10",
+            "horizon": "14d"
+          },
+          "values": [
+            0.221269,
+            .....,
+          ],
+          "timestamps": [
+            1752461807000,
+            ....,
+          ]
+        },
+        {
+          .......
+        }
+      ],
+      "metadata": {
+        "total_metrics": 9,
+        "total_forecasts": 63,
+        "horizon_days": 7,
+        "quantiles": [
+          0.1,
+          0.5,
+          0.9
+        ]
+      }
+    }
+  },
+  "clusters_count": 1,
+  "total_forecast_entries": 1
+}
 
-### TOTO (Datadog's Zero-Shot Forecasting)
-- **Type**: Transformer-based zero-shot forecasting
-- **Best for**: Limited historical data, diverse time series
-- **Configuration**: `models.type: toto`
-- **GPU**: Recommended for performance
-- **Checkpoint**: Uses Hugging Face model `Datadog/Toto-Open-Base-1.0`
+```
+
+### List Available Clusters
+`GET /clusters`
+
+Returns list of clusters with forecast data:
+
+```json
+{"clusters": ["prod-cluster", "staging-cluster"], "count" : 2}
+```
+
+## Documentation
+
+For detailed implementation details and advanced configuration options, see [docs/appendix.md](docs/appendix.md).
+
+For TOTO tensor shape specifications and data format details, refer to [docs/TOTO_TENSOR_SHAPE_GUIDE.md](docs/TOTO_TENSOR_SHAPE_GUIDE.md).
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 📊 Validation & Accuracy
 
@@ -224,7 +266,6 @@ PYTHONPATH=src pdm run python -m debugpy --listen 5678 --wait-for-client -m fore
 
 **High MAPE Values**
 - Increase `lookback_days` for more training data
-- Try different model types (`nbeats` vs `toto`)
 - Adjust `forecast_horizon` to shorter periods
 - Check data quality and missing values
 
