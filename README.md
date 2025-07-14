@@ -34,6 +34,8 @@ forecasting-agent/
 │   │   └── forecast_validator.py      # Model accuracy validation
 │   └── optimizers/
 │       └── idle_capacity.py           # Cost optimization logic
+├── toto/                              # Upstream Datadog/Toto utility code
+│   └── ...                            # TOTO model utilities and helpers
 ├── config.yaml                        # Main configuration file
 ├── deployments/
 │   └── kubernetes/
@@ -43,6 +45,10 @@ forecasting-agent/
     ├── appendix.md                    # Additional documentation
     └── TOTO_TENSOR_SHAPE_GUIDE.md     # TOTO tensor format guide
 ```
+
+### TOTO Model Integration
+
+The `toto/` folder contains utility code directly from upstream [Datadog/Toto](https://github.com/Datadog/TOTO) repository. This provides the necessary utilities and helper functions to leverage the TOTO zero-shot forecasting model, including tensor operations, data preprocessing, and model inference capabilities.
 
 ## Quick Start
 
