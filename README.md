@@ -2,11 +2,12 @@
 
 FinOps forecasting agent that ingests Kubernetes cost/utilization metrics from Prometheus and generates forecasts using Datadog's TOTO zero-shot model. 
 
-> Currently in development - deployment files work as-is, just build Docker image, push, and apply deployment.
+> Currently in development - K8s deployment files work as-is, just build Docker image, push, and apply deployment.
 
 **Note**: 
-- Validation & Optimizers are not working at the moment.
+- Validation & Optimizers are broken at the moment.
 - NBEATS adapter specific code will be removed completely.
+- A versatile Grafana dashboard will be shipped with k0rdent Service Catalog. For now, there are few screenshots from the built `Grafana dashboard` in `/docs`.
 
 ## Architecture
 
@@ -58,7 +59,13 @@ The `toto/` folder contains utility code directly from upstream [Datadog/Toto](h
 # Build and push Docker image
 docker build -t forecasting-agent:latest .
 docker push your-registry/forecasting-agent:latest
+```
 
+### Kubernetes
+
+* Patch the [kubernetes deployment resource](./deployments/kubernetes/deployment.yaml) with your public {docker-image} of Finops application.
+
+```bash
 # Apply Kubernetes deployment
 kubectl apply -f deployments/kubernetes/deployment.yaml
 ```
@@ -69,11 +76,13 @@ kubectl apply -f deployments/kubernetes/deployment.yaml
 # Install dependencies
 pdm install
 
-# Configure Prometheus endpoint in config.yaml
-# Run the agent
-PYTHONPATH=.:src pdm run python src/main.py --config config.yaml
+# Run directly
+PYTHONPATH=src pdm run python -m forecasting_agent.main config.yaml
 
+# Or with debugging
+PYTHONPATH=src pdm run python -m debugpy --listen 5678 --wait-for-client -m forecasting_agent.main config.yaml
 ```
+
 
 ## Configuration
 
@@ -218,10 +227,6 @@ For detailed implementation details and advanced configuration options, see [doc
 
 For TOTO tensor shape specifications and data format details, refer to [docs/TOTO_TENSOR_SHAPE_GUIDE.md](docs/TOTO_TENSOR_SHAPE_GUIDE.md).
 
-## License
-
-MIT License - see [LICENSE](LICENSE) file for details.
-
 ## 📊 Validation & Accuracy
 
 The agent includes built-in forecast validation:
@@ -235,32 +240,6 @@ The agent includes built-in forecast validation:
 INFO: Component cost: MAPE=12.34%, MAE=0.0456, RMSE=0.0789
 INFO: Component cpu_usage: MAPE=8.91%, MAE=2.1234, RMSE=3.4567
 INFO: Validation completed for 6 components across 2 clusters
-```
-
-## 🚀 Deployment
-
-### Kubernetes (Recommended)
-
-```bash
-# Apply the deployment
-kubectl apply -f deployments/kubernetes/deployment.yaml
-
-# Check status
-kubectl get pods -l app=forecasting-agent
-kubectl logs -l app=forecasting-agent
-```
-
-### Local Development
-
-```bash
-# Install dependencies
-pdm install
-
-# Run directly
-PYTHONPATH=src pdm run python -m forecasting_agent.main config.yaml
-
-# Or with debugging
-PYTHONPATH=src pdm run python -m debugpy --listen 5678 --wait-for-client -m forecasting_agent.main config.yaml
 ```
 
 ## 🔧 Troubleshooting
@@ -290,6 +269,6 @@ grep "MAPE" forecasting-agent.log
 grep "health check" forecasting-agent.log
 ```
 
-## 📄 License
+## License
 
-Apache 2.0 - See LICENSE file for details
+Apache License - see [LICENSE](LICENSE) file for details.
