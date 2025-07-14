@@ -1,21 +1,21 @@
 # Forecasting Agent Dockerfile
-FROM python:3.10-slim
+FROM python:3.11-slim
 
-# Install build tools & git (for darts dependency that compiles lightgbm etc.)
 RUN apt-get update && apt-get install -y build-essential git && rm -rf /var/lib/apt/lists/*
 
-# Set workdir
 WORKDIR /app
 
-# Ensure Python can locate local src package
-ENV PYTHONPATH="/app/src:${PYTHONPATH}"
+ENV PYTHONPATH="/app/src:/app"
 
-# Copy project files
-COPY . /app
+COPY pyproject.toml /app/
 
-# Install PDM to resolve project deps defined in pyproject.toml
+# Install PDM and dependencies
 RUN pip install --no-cache-dir pdm && \
     pdm install --prod --no-editable --no-lock
+
+COPY src/ /app/src/
+COPY toto/ /app/toto/
+COPY config.yaml /app/
 
 # Expose forecast API/metrics port
 EXPOSE 8081
