@@ -18,10 +18,9 @@ from adapters.forecasting.toto_adapter import TOTOAdapter
 from adapters.prometheus_toto_adapter import PrometheusToTotoAdapter
 from adapters.prometheus_timeseries_adapter import PrometheusTimeseriesAdapter
 from adapters.forecast_format_converter import ForecastFormatConverter
-from core.metric_types import MetricTypeClassifier, MetricAggregationLevel
-from core.promql_queries import get_all_queries
+from metrics.metric_types import MetricTypeClassifier, MetricAggregationLevel
+from metrics.promql_queries import get_all_queries
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -31,7 +30,7 @@ logger = logging.getLogger(__name__)
 PROMQL = get_all_queries()
 
 exported_forecasts: Dict[str, Dict[str, Any]] = {}
-active_clusters: set = set()  # Track actual cluster names separately
+active_clusters: set = set()
 
 def _start_forecast_server(host: str, port: int):
     """Start a background HTTP server exposing forecast JSON."""

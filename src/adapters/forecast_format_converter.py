@@ -2,7 +2,7 @@
 import logging
 from typing import Dict, Any, List, Optional
 import math
-from core.metric_types import MetricTypeClassifier
+from metrics.metric_types import MetricTypeClassifier
 
 
 class ForecastFormatConverter:
@@ -11,7 +11,7 @@ class ForecastFormatConverter:
     def __init__(self):
         self.logger = logging.getLogger(self.__class__.__name__)
         
-        from core.metric_types import MetricTypeClassifier, MetricAggregationLevel
+        from metrics.metric_types import MetricTypeClassifier, MetricAggregationLevel
         self.metric_classifier = MetricTypeClassifier()
         self.MetricAggregationLevel = MetricAggregationLevel
     

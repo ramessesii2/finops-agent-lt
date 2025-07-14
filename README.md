@@ -27,7 +27,7 @@ forecasting-agent/
 │   │   │   └── prophet_adapter.py     # Prophet forecasting model
 │   │   ├── prometheus_toto_adapter.py # Direct Prometheus to TOTO conversion
 │   │   └── forecast_format_converter.py # Output format conversion
-│   ├── core/
+│   ├── metrics/
 │   │   ├── metric_types.py            # Metric classification
 │   │   └── promql_queries.py          # PromQL query definitions
 │   ├── validation/
