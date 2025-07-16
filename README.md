@@ -99,7 +99,20 @@ helm install finops-agent ./helm --namespace finops --create-namespace
 helm install finops-agent ./helm \
   --set config.collector.url=http://your-prometheus:9090
 ```
+#### Grafana Dashboard
 
+The Helm chart includes a bundled Grafana instance with pre-configured forecasting dashboards.
+
+* Port forward to access Grafana UI
+kubectl port-forward service/finops-agent-grafana 3001:3001
+
+`
+Default: Go to http://localhost:3001 - {user: admin, pass: finops123}
+`
+
+Dashboard Features
+- 9 forecasting panels (4 node-level + 5 cluster-level)
+- 7-day forecast horizon
 
 ## Configuration
 

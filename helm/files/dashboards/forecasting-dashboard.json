@@ -39,7 +39,7 @@
         "type": "yesoreyeram-infinity-datasource",
         "uid": "finops-infinity"
       },
-      "description": "",
+      "description": "Forecasted hourly cost per node with confidence intervals. Shows q0.1 (optimistic), q0.5 (median forecast), and q0.9 (pessimistic) cost predictions.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -132,7 +132,6 @@
           "root_selector": "$map(\n  forecasts[metric.__name__ = \"cost_usd_per_node_forecast\" and metric.quantile = \"0.10\" and metric.node = \"${node}\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
           "source": "url",
           "type": "json",
-          "uql": "parse-json\n| jsonata '\n(\n  $q := [\"0.10\",\"0.50\",\"0.90\"];                      /* ✏️  pick the quantiles you need */\n  (\n    $map(\n      forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\"\n                and metric.quantile in $q],\n      function($f){\n        $map($f.timestamps, function($t,$i){\n          {\n            \"_time\":  $t,                            /* epoch-ms → datetime in UQL later */\n            \"USD\":    $f.values[$i],                 /* numeric value                */\n            \"quantile\": $f.metric.quantile           /* keep a label for colouring   */\n          }\n        })\n      }\n    )\n  ).*\n)'\n| project\n    _time     = unixtime_milliseconds_todatetime(_time),\n    USD       = tonumber(USD),\n    quantile",
           "url": "/metrics/${cluster}",
           "url_options": {
             "data": "",
@@ -165,7 +164,6 @@
           "root_selector": "$map(\n  forecasts[metric.__name__ = \"cost_usd_per_node_forecast\" and metric.quantile = \"0.50\" and metric.node = \"${node}\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
           "source": "url",
           "type": "json",
-          "uql": "parse-json\n| jsonata '\n(\n  $q := [\"0.10\",\"0.50\",\"0.90\"];                      /* ✏️  pick the quantiles you need */\n  (\n    $map(\n      forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\"\n                and metric.quantile in $q],\n      function($f){\n        $map($f.timestamps, function($t,$i){\n          {\n            \"_time\":  $t,                            /* epoch-ms → datetime in UQL later */\n            \"USD\":    $f.values[$i],                 /* numeric value                */\n            \"quantile\": $f.metric.quantile           /* keep a label for colouring   */\n          }\n        })\n      }\n    )\n  ).*\n)'\n| project\n    _time     = unixtime_milliseconds_todatetime(_time),\n    USD       = tonumber(USD),\n    quantile",
           "url": "/metrics/${cluster}",
           "url_options": {
             "data": "",
@@ -198,7 +196,6 @@
           "root_selector": "$map(\n  forecasts[metric.__name__ = \"cost_usd_per_node_forecast\" and metric.quantile = \"0.90\" and metric.node = \"${node}\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i],\n          \"node\":  metric.node\n        }\n      }\n    )\n  }\n)[*]",
           "source": "url",
           "type": "json",
-          "uql": "parse-json\n| jsonata '\n(\n  $q := [\"0.10\",\"0.50\",\"0.90\"];                      /* ✏️  pick the quantiles you need */\n  (\n    $map(\n      forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\"\n                and metric.quantile in $q],\n      function($f){\n        $map($f.timestamps, function($t,$i){\n          {\n            \"_time\":  $t,                            /* epoch-ms → datetime in UQL later */\n            \"USD\":    $f.values[$i],                 /* numeric value                */\n            \"quantile\": $f.metric.quantile           /* keep a label for colouring   */\n          }\n        })\n      }\n    )\n  ).*\n)'\n| project\n    _time     = unixtime_milliseconds_todatetime(_time),\n    USD       = tonumber(USD),\n    quantile",
           "url": "/metrics/${cluster}",
           "url_options": {
             "data": "",
@@ -215,7 +212,7 @@
         "type": "yesoreyeram-infinity-datasource",
         "uid": "finops-infinity"
       },
-      "description": "",
+      "description": "Forecasted CPU core count per node with confidence intervals. Shows q0.1 (low estimate), q0.5 (median forecast), and q0.9 (high estimate).",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -308,7 +305,6 @@
           "root_selector": "$map(\n  forecasts[metric.__name__ = \"cpu_total_cores_per_node_forecast\" and metric.quantile = \"0.10\" and metric.node = \"${node}\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
           "source": "url",
           "type": "json",
-          "uql": "parse-json\n| jsonata '\n(\n  $q := [\"0.10\",\"0.50\",\"0.90\"];                      /* ✏️  pick the quantiles you need */\n  (\n    $map(\n      forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\"\n                and metric.quantile in $q],\n      function($f){\n        $map($f.timestamps, function($t,$i){\n          {\n            \"_time\":  $t,                            /* epoch-ms → datetime in UQL later */\n            \"USD\":    $f.values[$i],                 /* numeric value                */\n            \"quantile\": $f.metric.quantile           /* keep a label for colouring   */\n          }\n        })\n      }\n    )\n  ).*\n)'\n| project\n    _time     = unixtime_milliseconds_todatetime(_time),\n    USD       = tonumber(USD),\n    quantile",
           "url": "/metrics/${cluster}",
           "url_options": {
             "data": "",
@@ -341,7 +337,6 @@
           "root_selector": "$map(\n  forecasts[metric.__name__ = \"cpu_total_cores_per_node_forecast\" and metric.quantile = \"0.50\" and metric.node = \"${node}\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
           "source": "url",
           "type": "json",
-          "uql": "parse-json\n| jsonata '\n(\n  $q := [\"0.10\",\"0.50\",\"0.90\"];                      /* ✏️  pick the quantiles you need */\n  (\n    $map(\n      forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\"\n                and metric.quantile in $q],\n      function($f){\n        $map($f.timestamps, function($t,$i){\n          {\n            \"_time\":  $t,                            /* epoch-ms → datetime in UQL later */\n            \"USD\":    $f.values[$i],                 /* numeric value                */\n            \"quantile\": $f.metric.quantile           /* keep a label for colouring   */\n          }\n        })\n      }\n    )\n  ).*\n)'\n| project\n    _time     = unixtime_milliseconds_todatetime(_time),\n    USD       = tonumber(USD),\n    quantile",
           "url": "/metrics/${cluster}",
           "url_options": {
             "data": "",
@@ -374,8 +369,7 @@
           "root_selector": "$map(\n  forecasts[metric.__name__ = \"cpu_total_cores_per_node_forecast\" and metric.quantile = \"0.90\" and metric.node = \"${node}\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i],\n          \"node\":  metric.node\n        }\n      }\n    )\n  }\n)[*]",
           "source": "url",
           "type": "json",
-          "uql": "parse-json\n| jsonata '\n(\n  $q := [\"0.10\",\"0.50\",\"0.90\"];                      /* ✏️  pick the quantiles you need */\n  (\n    $map(\n      forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\"\n                and metric.quantile in $q],\n      function($f){\n        $map($f.timestamps, function($t,$i){\n          {\n            \"_time\":  $t,                            /* epoch-ms → datetime in UQL later */\n            \"USD\":    $f.values[$i],                 /* numeric value                */\n            \"quantile\": $f.metric.quantile           /* keep a label for colouring   */\n          }\n        })\n      }\n    )\n  ).*\n)'\n| project\n    _time     = unixtime_milliseconds_todatetime(_time),\n    USD       = tonumber(USD),\n    quantile",
-          "url": "/metrics/${cluster}",
+                    "url": "/metrics/${cluster}",
           "url_options": {
             "data": "",
             "method": "GET"
@@ -391,7 +385,7 @@
         "type": "yesoreyeram-infinity-datasource",
         "uid": "finops-infinity"
       },
-      "description": "",
+      "description": "Forecasted CPU utilization percentage per node with confidence intervals. Shows q0.1 (low utilization), q0.5 (median forecast), and q0.9 (high utilization).",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -484,7 +478,6 @@
           "root_selector": "$map(\n  forecasts[metric.__name__ = \"cpu_pct_per_node_forecast\" and metric.quantile = \"0.10\" and metric.node = \"${node}\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
           "source": "url",
           "type": "json",
-          "uql": "parse-json\n| jsonata '\n(\n  $q := [\"0.10\",\"0.50\",\"0.90\"];                      /* ✏️  pick the quantiles you need */\n  (\n    $map(\n      forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\"\n                and metric.quantile in $q],\n      function($f){\n        $map($f.timestamps, function($t,$i){\n          {\n            \"_time\":  $t,                            /* epoch-ms → datetime in UQL later */\n            \"USD\":    $f.values[$i],                 /* numeric value                */\n            \"quantile\": $f.metric.quantile           /* keep a label for colouring   */\n          }\n        })\n      }\n    )\n  ).*\n)'\n| project\n    _time     = unixtime_milliseconds_todatetime(_time),\n    USD       = tonumber(USD),\n    quantile",
           "url": "/metrics/${cluster}",
           "url_options": {
             "data": "",
@@ -517,7 +510,6 @@
           "root_selector": "$map(\n  forecasts[metric.__name__ = \"cpu_pct_per_node_forecast\" and metric.quantile = \"0.50\" and metric.node = \"${node}\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
           "source": "url",
           "type": "json",
-          "uql": "parse-json\n| jsonata '\n(\n  $q := [\"0.10\",\"0.50\",\"0.90\"];                      /* ✏️  pick the quantiles you need */\n  (\n    $map(\n      forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\"\n                and metric.quantile in $q],\n      function($f){\n        $map($f.timestamps, function($t,$i){\n          {\n            \"_time\":  $t,                            /* epoch-ms → datetime in UQL later */\n            \"USD\":    $f.values[$i],                 /* numeric value                */\n            \"quantile\": $f.metric.quantile           /* keep a label for colouring   */\n          }\n        })\n      }\n    )\n  ).*\n)'\n| project\n    _time     = unixtime_milliseconds_todatetime(_time),\n    USD       = tonumber(USD),\n    quantile",
           "url": "/metrics/${cluster}",
           "url_options": {
             "data": "",
@@ -550,7 +542,6 @@
           "root_selector": "$map(\n  forecasts[metric.__name__ = \"cpu_pct_per_node_forecast\" and metric.quantile = \"0.90\" and metric.node = \"${node}\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
           "source": "url",
           "type": "json",
-          "uql": "parse-json\n| jsonata '\n(\n  $q := [\"0.10\",\"0.50\",\"0.90\"];                      /* ✏️  pick the quantiles you need */\n  (\n    $map(\n      forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\"\n                and metric.quantile in $q],\n      function($f){\n        $map($f.timestamps, function($t,$i){\n          {\n            \"_time\":  $t,                            /* epoch-ms → datetime in UQL later */\n            \"USD\":    $f.values[$i],                 /* numeric value                */\n            \"quantile\": $f.metric.quantile           /* keep a label for colouring   */\n          }\n        })\n      }\n    )\n  ).*\n)'\n| project\n    _time     = unixtime_milliseconds_todatetime(_time),\n    USD       = tonumber(USD),\n    quantile",
           "url": "/metrics/${cluster}",
           "url_options": {
             "data": "",
@@ -567,7 +558,7 @@
         "type": "yesoreyeram-infinity-datasource",
         "uid": "finops-infinity"
       },
-      "description": "",
+      "description": "Forecasted memory utilization percentage per node with confidence intervals. Shows q0.1 (low usage), q0.5 (median forecast), and q0.9 (high usage).",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -660,7 +651,6 @@
           "root_selector": "$map(\n  forecasts[metric.__name__ = \"mem_pct_per_node_forecast\" and metric.quantile = \"0.10\" and metric.node = \"${node}\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
           "source": "url",
           "type": "json",
-          "uql": "parse-json\n| jsonata '\n(\n  $q := [\"0.10\",\"0.50\",\"0.90\"];                      /* ✏️  pick the quantiles you need */\n  (\n    $map(\n      forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\"\n                and metric.quantile in $q],\n      function($f){\n        $map($f.timestamps, function($t,$i){\n          {\n            \"_time\":  $t,                            /* epoch-ms → datetime in UQL later */\n            \"USD\":    $f.values[$i],                 /* numeric value                */\n            \"quantile\": $f.metric.quantile           /* keep a label for colouring   */\n          }\n        })\n      }\n    )\n  ).*\n)'\n| project\n    _time     = unixtime_milliseconds_todatetime(_time),\n    USD       = tonumber(USD),\n    quantile",
           "url": "/metrics/${cluster}",
           "url_options": {
             "data": "",
@@ -693,7 +683,6 @@
           "root_selector": "$map(\n  forecasts[metric.__name__ = \"mem_pct_per_node_forecast\" and metric.quantile = \"0.50\" and metric.node = \"${node}\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
           "source": "url",
           "type": "json",
-          "uql": "parse-json\n| jsonata '\n(\n  $q := [\"0.10\",\"0.50\",\"0.90\"];                      /* ✏️  pick the quantiles you need */\n  (\n    $map(\n      forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\"\n                and metric.quantile in $q],\n      function($f){\n        $map($f.timestamps, function($t,$i){\n          {\n            \"_time\":  $t,                            /* epoch-ms → datetime in UQL later */\n            \"USD\":    $f.values[$i],                 /* numeric value                */\n            \"quantile\": $f.metric.quantile           /* keep a label for colouring   */\n          }\n        })\n      }\n    )\n  ).*\n)'\n| project\n    _time     = unixtime_milliseconds_todatetime(_time),\n    USD       = tonumber(USD),\n    quantile",
           "url": "/metrics/${cluster}",
           "url_options": {
             "data": "",
@@ -726,7 +715,6 @@
           "root_selector": "$map(\n  forecasts[metric.__name__ = \"mem_pct_per_node_forecast\" and metric.quantile = \"0.90\" and metric.node = \"${node}\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
           "source": "url",
           "type": "json",
-          "uql": "parse-json\n| jsonata '\n(\n  $q := [\"0.10\",\"0.50\",\"0.90\"];                      /* ✏️  pick the quantiles you need */\n  (\n    $map(\n      forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\"\n                and metric.quantile in $q],\n      function($f){\n        $map($f.timestamps, function($t,$i){\n          {\n            \"_time\":  $t,                            /* epoch-ms → datetime in UQL later */\n            \"USD\":    $f.values[$i],                 /* numeric value                */\n            \"quantile\": $f.metric.quantile           /* keep a label for colouring   */\n          }\n        })\n      }\n    )\n  ).*\n)'\n| project\n    _time     = unixtime_milliseconds_todatetime(_time),\n    USD       = tonumber(USD),\n    quantile",
           "url": "/metrics/${cluster}",
           "url_options": {
             "data": "",
@@ -756,7 +744,7 @@
         "type": "yesoreyeram-infinity-datasource",
         "uid": "finops-infinity"
       },
-      "description": "",
+      "description": "Forecasted hourly cost at cluster level with confidence intervals. Shows q0.1 (optimistic), q0.5 (median forecast), and q0.9 (pessimistic) cost predictions.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -849,7 +837,6 @@
           "root_selector": "$map(\n  forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\" and metric.quantile = \"0.10\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
           "source": "url",
           "type": "json",
-          "uql": "parse-json\n| jsonata '\n(\n  $q := [\"0.10\",\"0.50\",\"0.90\"];                      /* ✏️  pick the quantiles you need */\n  (\n    $map(\n      forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\"\n                and metric.quantile in $q],\n      function($f){\n        $map($f.timestamps, function($t,$i){\n          {\n            \"_time\":  $t,                            /* epoch-ms → datetime in UQL later */\n            \"USD\":    $f.values[$i],                 /* numeric value                */\n            \"quantile\": $f.metric.quantile           /* keep a label for colouring   */\n          }\n        })\n      }\n    )\n  ).*\n)'\n| project\n    _time     = unixtime_milliseconds_todatetime(_time),\n    USD       = tonumber(USD),\n    quantile",
           "url": "/metrics/${cluster}",
           "url_options": {
             "data": "",
@@ -882,7 +869,6 @@
           "root_selector": "$map(\n  forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\" and metric.quantile = \"0.50\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
           "source": "url",
           "type": "json",
-          "uql": "parse-json\n| jsonata '\n(\n  $q := [\"0.10\",\"0.50\",\"0.90\"];                      /* ✏️  pick the quantiles you need */\n  (\n    $map(\n      forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\"\n                and metric.quantile in $q],\n      function($f){\n        $map($f.timestamps, function($t,$i){\n          {\n            \"_time\":  $t,                            /* epoch-ms → datetime in UQL later */\n            \"USD\":    $f.values[$i],                 /* numeric value                */\n            \"quantile\": $f.metric.quantile           /* keep a label for colouring   */\n          }\n        })\n      }\n    )\n  ).*\n)'\n| project\n    _time     = unixtime_milliseconds_todatetime(_time),\n    USD       = tonumber(USD),\n    quantile",
           "url": "/metrics/${cluster}",
           "url_options": {
             "data": "",
@@ -915,7 +901,6 @@
           "root_selector": "$map(\n  forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\" and metric.quantile = \"0.90\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
           "source": "url",
           "type": "json",
-          "uql": "parse-json\n| jsonata '\n(\n  $q := [\"0.10\",\"0.50\",\"0.90\"];                      /* ✏️  pick the quantiles you need */\n  (\n    $map(\n      forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\"\n                and metric.quantile in $q],\n      function($f){\n        $map($f.timestamps, function($t,$i){\n          {\n            \"_time\":  $t,                            /* epoch-ms → datetime in UQL later */\n            \"USD\":    $f.values[$i],                 /* numeric value                */\n            \"quantile\": $f.metric.quantile           /* keep a label for colouring   */\n          }\n        })\n      }\n    )\n  ).*\n)'\n| project\n    _time     = unixtime_milliseconds_todatetime(_time),\n    USD       = tonumber(USD),\n    quantile",
           "url": "/metrics/${cluster}",
           "url_options": {
             "data": "",
@@ -932,7 +917,7 @@
         "type": "yesoreyeram-infinity-datasource",
         "uid": "finops-infinity"
       },
-      "description": "",
+      "description": "Forecasted CPU utilization percentage at cluster level with confidence intervals. Shows q0.1 (low utilization), q0.5 (median forecast), and q0.9 (high utilization).",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1025,7 +1010,6 @@
           "root_selector": "$map(\n  forecasts[metric.__name__ = \"cpu_pct_per_cluster_forecast\" and metric.quantile = \"0.10\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
           "source": "url",
           "type": "json",
-          "uql": "parse-json\n| jsonata '\n(\n  $q := [\"0.10\",\"0.50\",\"0.90\"];                      /* ✏️  pick the quantiles you need */\n  (\n    $map(\n      forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\"\n                and metric.quantile in $q],\n      function($f){\n        $map($f.timestamps, function($t,$i){\n          {\n            \"_time\":  $t,                            /* epoch-ms → datetime in UQL later */\n            \"USD\":    $f.values[$i],                 /* numeric value                */\n            \"quantile\": $f.metric.quantile           /* keep a label for colouring   */\n          }\n        })\n      }\n    )\n  ).*\n)'\n| project\n    _time     = unixtime_milliseconds_todatetime(_time),\n    USD       = tonumber(USD),\n    quantile",
           "url": "/metrics/${cluster}",
           "url_options": {
             "data": "",
@@ -1058,7 +1042,6 @@
           "root_selector": "$map(\n  forecasts[metric.__name__ = \"cpu_pct_per_cluster_forecast\" and metric.quantile = \"0.50\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
           "source": "url",
           "type": "json",
-          "uql": "parse-json\n| jsonata '\n(\n  $q := [\"0.10\",\"0.50\",\"0.90\"];                      /* ✏️  pick the quantiles you need */\n  (\n    $map(\n      forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\"\n                and metric.quantile in $q],\n      function($f){\n        $map($f.timestamps, function($t,$i){\n          {\n            \"_time\":  $t,                            /* epoch-ms → datetime in UQL later */\n            \"USD\":    $f.values[$i],                 /* numeric value                */\n            \"quantile\": $f.metric.quantile           /* keep a label for colouring   */\n          }\n        })\n      }\n    )\n  ).*\n)'\n| project\n    _time     = unixtime_milliseconds_todatetime(_time),\n    USD       = tonumber(USD),\n    quantile",
           "url": "/metrics/${cluster}",
           "url_options": {
             "data": "",
@@ -1091,7 +1074,6 @@
           "root_selector": "$map(\n  forecasts[metric.__name__ = \"cpu_pct_per_cluster_forecast\" and metric.quantile = \"0.90\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
           "source": "url",
           "type": "json",
-          "uql": "parse-json\n| jsonata '\n(\n  $q := [\"0.10\",\"0.50\",\"0.90\"];                      /* ✏️  pick the quantiles you need */\n  (\n    $map(\n      forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\"\n                and metric.quantile in $q],\n      function($f){\n        $map($f.timestamps, function($t,$i){\n          {\n            \"_time\":  $t,                            /* epoch-ms → datetime in UQL later */\n            \"USD\":    $f.values[$i],                 /* numeric value                */\n            \"quantile\": $f.metric.quantile           /* keep a label for colouring   */\n          }\n        })\n      }\n    )\n  ).*\n)'\n| project\n    _time     = unixtime_milliseconds_todatetime(_time),\n    USD       = tonumber(USD),\n    quantile",
           "url": "/metrics/${cluster}",
           "url_options": {
             "data": "",
@@ -1108,7 +1090,7 @@
         "type": "yesoreyeram-infinity-datasource",
         "uid": "finops-infinity"
       },
-      "description": "",
+      "description": "Forecasted memory utilization percentage at cluster level with confidence intervals. Shows q0.1 (low usage), q0.5 (median forecast), and q0.9 (high usage) predictions.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1201,7 +1183,6 @@
           "root_selector": "$map(\n  forecasts[metric.__name__ = \"mem_pct_per_cluster_forecast\" and metric.quantile = \"0.10\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
           "source": "url",
           "type": "json",
-          "uql": "parse-json\n| jsonata '\n(\n  $q := [\"0.10\",\"0.50\",\"0.90\"];                      /* ✏️  pick the quantiles you need */\n  (\n    $map(\n      forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\"\n                and metric.quantile in $q],\n      function($f){\n        $map($f.timestamps, function($t,$i){\n          {\n            \"_time\":  $t,                            /* epoch-ms → datetime in UQL later */\n            \"USD\":    $f.values[$i],                 /* numeric value                */\n            \"quantile\": $f.metric.quantile           /* keep a label for colouring   */\n          }\n        })\n      }\n    )\n  ).*\n)'\n| project\n    _time     = unixtime_milliseconds_todatetime(_time),\n    USD       = tonumber(USD),\n    quantile",
           "url": "/metrics/${cluster}",
           "url_options": {
             "data": "",
@@ -1234,7 +1215,6 @@
           "root_selector": "$map(\n  forecasts[metric.__name__ = \"mem_pct_per_cluster_forecast\" and metric.quantile = \"0.50\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
           "source": "url",
           "type": "json",
-          "uql": "parse-json\n| jsonata '\n(\n  $q := [\"0.10\",\"0.50\",\"0.90\"];                      /* ✏️  pick the quantiles you need */\n  (\n    $map(\n      forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\"\n                and metric.quantile in $q],\n      function($f){\n        $map($f.timestamps, function($t,$i){\n          {\n            \"_time\":  $t,                            /* epoch-ms → datetime in UQL later */\n            \"USD\":    $f.values[$i],                 /* numeric value                */\n            \"quantile\": $f.metric.quantile           /* keep a label for colouring   */\n          }\n        })\n      }\n    )\n  ).*\n)'\n| project\n    _time     = unixtime_milliseconds_todatetime(_time),\n    USD       = tonumber(USD),\n    quantile",
           "url": "/metrics/${cluster}",
           "url_options": {
             "data": "",
@@ -1267,7 +1247,6 @@
           "root_selector": "$map(\n  forecasts[metric.__name__ = \"mem_pct_per_cluster_forecast\" and metric.quantile = \"0.90\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
           "source": "url",
           "type": "json",
-          "uql": "parse-json\n| jsonata '\n(\n  $q := [\"0.10\",\"0.50\",\"0.90\"];                      /* ✏️  pick the quantiles you need */\n  (\n    $map(\n      forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\"\n                and metric.quantile in $q],\n      function($f){\n        $map($f.timestamps, function($t,$i){\n          {\n            \"_time\":  $t,                            /* epoch-ms → datetime in UQL later */\n            \"USD\":    $f.values[$i],                 /* numeric value                */\n            \"quantile\": $f.metric.quantile           /* keep a label for colouring   */\n          }\n        })\n      }\n    )\n  ).*\n)'\n| project\n    _time     = unixtime_milliseconds_todatetime(_time),\n    USD       = tonumber(USD),\n    quantile",
           "url": "/metrics/${cluster}",
           "url_options": {
             "data": "",
@@ -1284,7 +1263,7 @@
         "type": "yesoreyeram-infinity-datasource",
         "uid": "finops-infinity"
       },
-      "description": "",
+      "description": "Forecasted number of nodes per cluster with confidence intervals. Shows q0.1 (minimum nodes), q0.5 (median forecast), and q0.9 (maximum nodes) predictions.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1377,7 +1356,6 @@
           "root_selector": "$map(\n  forecasts[metric.__name__ = \"node_count_per_cluster_forecast\" and metric.quantile = \"0.10\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
           "source": "url",
           "type": "json",
-          "uql": "parse-json\n| jsonata '\n(\n  $q := [\"0.10\",\"0.50\",\"0.90\"];                      /* ✏️  pick the quantiles you need */\n  (\n    $map(\n      forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\"\n                and metric.quantile in $q],\n      function($f){\n        $map($f.timestamps, function($t,$i){\n          {\n            \"_time\":  $t,                            /* epoch-ms → datetime in UQL later */\n            \"USD\":    $f.values[$i],                 /* numeric value                */\n            \"quantile\": $f.metric.quantile           /* keep a label for colouring   */\n          }\n        })\n      }\n    )\n  ).*\n)'\n| project\n    _time     = unixtime_milliseconds_todatetime(_time),\n    USD       = tonumber(USD),\n    quantile",
           "url": "/metrics/${cluster}",
           "url_options": {
             "data": "",
@@ -1410,7 +1388,6 @@
           "root_selector": "$map(\n  forecasts[metric.__name__ = \"node_count_per_cluster_forecast\" and metric.quantile = \"0.50\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
           "source": "url",
           "type": "json",
-          "uql": "parse-json\n| jsonata '\n(\n  $q := [\"0.10\",\"0.50\",\"0.90\"];                      /* ✏️  pick the quantiles you need */\n  (\n    $map(\n      forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\"\n                and metric.quantile in $q],\n      function($f){\n        $map($f.timestamps, function($t,$i){\n          {\n            \"_time\":  $t,                            /* epoch-ms → datetime in UQL later */\n            \"USD\":    $f.values[$i],                 /* numeric value                */\n            \"quantile\": $f.metric.quantile           /* keep a label for colouring   */\n          }\n        })\n      }\n    )\n  ).*\n)'\n| project\n    _time     = unixtime_milliseconds_todatetime(_time),\n    USD       = tonumber(USD),\n    quantile",
           "url": "/metrics/${cluster}",
           "url_options": {
             "data": "",
@@ -1443,7 +1420,6 @@
           "root_selector": "$map(\n  forecasts[metric.__name__ = \"node_count_per_cluster_forecast\" and metric.quantile = \"0.90\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
           "source": "url",
           "type": "json",
-          "uql": "parse-json\n| jsonata '\n(\n  $q := [\"0.10\",\"0.50\",\"0.90\"];                      /* ✏️  pick the quantiles you need */\n  (\n    $map(\n      forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\"\n                and metric.quantile in $q],\n      function($f){\n        $map($f.timestamps, function($t,$i){\n          {\n            \"_time\":  $t,                            /* epoch-ms → datetime in UQL later */\n            \"USD\":    $f.values[$i],                 /* numeric value                */\n            \"quantile\": $f.metric.quantile           /* keep a label for colouring   */\n          }\n        })\n      }\n    )\n  ).*\n)'\n| project\n    _time     = unixtime_milliseconds_todatetime(_time),\n    USD       = tonumber(USD),\n    quantile",
           "url": "/metrics/${cluster}",
           "url_options": {
             "data": "",
@@ -1460,7 +1436,7 @@
         "type": "yesoreyeram-infinity-datasource",
         "uid": "finops-infinity"
       },
-      "description": "",
+      "description": "Forecasted total memory utilization per cluster with confidence intervals. Shows q0.1 (low utilization), q0.5 (median forecast), and q0.9 (high utilization) predictions.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1553,7 +1529,6 @@
           "root_selector": "$map(\n  forecasts[metric.__name__ = \"mem_total_gb_per_cluster_forecast\" and metric.quantile = \"0.10\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
           "source": "url",
           "type": "json",
-          "uql": "parse-json\n| jsonata '\n(\n  $q := [\"0.10\",\"0.50\",\"0.90\"];                      /* ✏️  pick the quantiles you need */\n  (\n    $map(\n      forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\"\n                and metric.quantile in $q],\n      function($f){\n        $map($f.timestamps, function($t,$i){\n          {\n            \"_time\":  $t,                            /* epoch-ms → datetime in UQL later */\n            \"USD\":    $f.values[$i],                 /* numeric value                */\n            \"quantile\": $f.metric.quantile           /* keep a label for colouring   */\n          }\n        })\n      }\n    )\n  ).*\n)'\n| project\n    _time     = unixtime_milliseconds_todatetime(_time),\n    USD       = tonumber(USD),\n    quantile",
           "url": "/metrics/${cluster}",
           "url_options": {
             "data": "",
@@ -1586,7 +1561,6 @@
           "root_selector": "$map(\n  forecasts[metric.__name__ = \"mem_total_gb_per_cluster_forecast\" and metric.quantile = \"0.50\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
           "source": "url",
           "type": "json",
-          "uql": "parse-json\n| jsonata '\n(\n  $q := [\"0.10\",\"0.50\",\"0.90\"];                      /* ✏️  pick the quantiles you need */\n  (\n    $map(\n      forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\"\n                and metric.quantile in $q],\n      function($f){\n        $map($f.timestamps, function($t,$i){\n          {\n            \"_time\":  $t,                            /* epoch-ms → datetime in UQL later */\n            \"USD\":    $f.values[$i],                 /* numeric value                */\n            \"quantile\": $f.metric.quantile           /* keep a label for colouring   */\n          }\n        })\n      }\n    )\n  ).*\n)'\n| project\n    _time     = unixtime_milliseconds_todatetime(_time),\n    USD       = tonumber(USD),\n    quantile",
           "url": "/metrics/${cluster}",
           "url_options": {
             "data": "",
@@ -1619,7 +1593,6 @@
           "root_selector": "$map(\n  forecasts[metric.__name__ = \"mem_total_gb_per_cluster_forecast\" and metric.quantile = \"0.90\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
           "source": "url",
           "type": "json",
-          "uql": "parse-json\n| jsonata '\n(\n  $q := [\"0.10\",\"0.50\",\"0.90\"];                      /* ✏️  pick the quantiles you need */\n  (\n    $map(\n      forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\"\n                and metric.quantile in $q],\n      function($f){\n        $map($f.timestamps, function($t,$i){\n          {\n            \"_time\":  $t,                            /* epoch-ms → datetime in UQL later */\n            \"USD\":    $f.values[$i],                 /* numeric value                */\n            \"quantile\": $f.metric.quantile           /* keep a label for colouring   */\n          }\n        })\n      }\n    )\n  ).*\n)'\n| project\n    _time     = unixtime_milliseconds_todatetime(_time),\n    USD       = tonumber(USD),\n    quantile",
           "url": "/metrics/${cluster}",
           "url_options": {
             "data": "",
