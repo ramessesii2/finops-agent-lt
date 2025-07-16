@@ -64,7 +64,7 @@ The following table lists the configurable parameters and their default values:
 helm install my-finops-agent ./helm
 ```
 
-### Production Installation with Custom Configuration
+### Installation with Custom Configuration
 ```bash
 helm install finops-agent ./helm \
   --set replicaCount=2 \
@@ -73,6 +73,62 @@ helm install finops-agent ./helm \
   --set resources.requests.memory=512Mi \
   --set resources.limits.cpu=2000m \
   --set resources.limits.memory=4Gi
+```
+
+## Grafana Dashboard
+
+This Helm chart includes a bundled Grafana instance with pre-configured dashboards for FinOps forecasting visualization.
+
+### Accessing Grafana
+
+#### 1. Deploy with Grafana Enabled (Default)
+```bash
+# Grafana is enabled by default
+helm install finops-agent ./helm
+
+# Or explicitly enable Grafana
+helm install finops-agent ./helm --set grafana.enabled=true
+```
+
+#### 2. Port Forward to Access Grafana UI
+```bash
+# Forward local port 3001 to Grafana service port 3001
+kubectl port-forward service/finops-agent-grafana 3001:3001
+```
+
+#### 3. Access Dashboard
+- **URL**: http://localhost:3001
+- **Username**: `admin`
+- **Password**: `finops123`
+
+### Dashboard Overview
+
+The **Forecasting Dashboard** provides comprehensive visualization of:
+
+**Node-Level Forecasts:**
+- Node Hourly Cost Forecast
+- Node CPU Cores Forecast  
+- Node CPU Utilisation Forecast
+- Node Memory Utilisation Forecast
+
+**Cluster-Level Forecasts:**
+- Cluster Hourly Cost Forecast
+- Cluster CPU Utilisation Forecast
+- Cluster Memory Utilisation Forecast
+- Node Count Per Cluster Forecast
+- Total Memory Utilization Per Cluster Forecast
+
+### Grafana Configuration
+
+| Parameter | Description | Default |
+|-----------|-------------|----------|
+| `grafana.enabled` | Enable/disable Grafana | `true` |
+| `grafana.image.repository` | Grafana image repository | `grafana/grafana` |
+| `grafana.image.tag` | Grafana image tag | `10.4.7` |
+| `grafana.service.port` | Grafana service port | `3001` |
+| `grafana.config.security.admin_user` | Admin username | `admin` |
+| `grafana.config.security.admin_password` | Admin password | `finops123` |
+
 ```
 
 ## Monitoring
