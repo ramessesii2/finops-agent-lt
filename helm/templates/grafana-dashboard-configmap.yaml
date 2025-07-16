@@ -1,0 +1,14 @@
+{{- if .Values.grafana.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "finops-agent.fullname" . }}-dashboard-config
+  labels:
+    {{- include "finops-agent.labels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+data:
+{{- range $path, $_ := .Files.Glob "files/dashboards/**" }}
+  {{ base $path }}: |
+{{ $.Files.Get $path | indent 4 }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,30 @@
+{{- if .Values.grafana.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "finops-agent.fullname" . }}-grafana-datasources
+  labels:
+    {{- include "finops-agent.labels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: FinOps Agent Infinity
+        type: yesoreyeram-infinity-datasource
+        access: proxy
+        uid: finops-infinity
+        isDefault: true
+        url: "http://{{ include "finops-agent.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.config.metrics.port }}"
+        jsonData:
+          # Authentication and security settings
+          timeoutInSeconds: 60
+          tlsSkipVerify: true
+          allowedHosts:
+            - "http://{{ include "finops-agent.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.config.metrics.port }}"
+          allowDangerousHTTPMethods: false
+          # Alternative base URL configurations for different Infinity versions
+          baseUrl: "http://{{ include "finops-agent.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.config.metrics.port }}"
+          url: "http://{{ include "finops-agent.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.config.metrics.port }}"
+        secureJsonData: {}
+{{- end }}

@@ -1,0 +1,1709 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": 30,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 101,
+      "panels": [],
+      "title": "Node-Level Forecasts",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "finops-infinity"
+      },
+      "description": "Forecasted hourly cost per node with confidence intervals. Shows q0.1 (optimistic), q0.5 (median forecast), and q0.9 (pessimistic) cost predictions.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "series",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 5,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "unit": "currencyUSD"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 1
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "calcs": [
+            "last"
+          ],
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "10.4.7",
+      "targets": [
+        {
+          "columns": [
+            {
+              "selector": "time",
+              "text": "Time",
+              "type": "timestamp_epoch"
+            },
+            {
+              "selector": "value",
+              "text": "q0.10",
+              "type": "number"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "finops-infinity"
+          },
+          "filters": [],
+          "format": "timeseries",
+          "global_query_id": "",
+          "hide": false,
+          "parser": "backend",
+          "refId": "A",
+          "root_selector": "$map(\n  forecasts[metric.__name__ = \"cost_usd_per_node_forecast\" and metric.quantile = \"0.10\" and metric.node = \"${node}\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
+          "source": "url",
+          "type": "json",
+          "url": "/metrics/${cluster}",
+          "url_options": {
+            "data": "",
+            "method": "GET"
+          }
+        },
+        {
+          "columns": [
+            {
+              "selector": "time",
+              "text": "Time",
+              "type": "timestamp_epoch"
+            },
+            {
+              "selector": "value",
+              "text": "q0.50",
+              "type": "number"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "finops-infinity"
+          },
+          "filters": [],
+          "format": "timeseries",
+          "global_query_id": "",
+          "hide": false,
+          "parser": "backend",
+          "refId": "B",
+          "root_selector": "$map(\n  forecasts[metric.__name__ = \"cost_usd_per_node_forecast\" and metric.quantile = \"0.50\" and metric.node = \"${node}\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
+          "source": "url",
+          "type": "json",
+          "url": "/metrics/${cluster}",
+          "url_options": {
+            "data": "",
+            "method": "GET"
+          }
+        },
+        {
+          "columns": [
+            {
+              "selector": "time",
+              "text": "Time",
+              "type": "timestamp_epoch"
+            },
+            {
+              "selector": "value",
+              "text": "q0.90",
+              "type": "number"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "finops-infinity"
+          },
+          "filters": [],
+          "format": "timeseries",
+          "global_query_id": "",
+          "hide": false,
+          "parser": "backend",
+          "refId": "C",
+          "root_selector": "$map(\n  forecasts[metric.__name__ = \"cost_usd_per_node_forecast\" and metric.quantile = \"0.90\" and metric.node = \"${node}\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i],\n          \"node\":  metric.node\n        }\n      }\n    )\n  }\n)[*]",
+          "source": "url",
+          "type": "json",
+          "url": "/metrics/${cluster}",
+          "url_options": {
+            "data": "",
+            "method": "GET"
+          }
+        }
+      ],
+      "title": "Node Hourly Cost Forecast",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "finops-infinity"
+      },
+      "description": "Forecasted CPU core count per node with confidence intervals. Shows q0.1 (low estimate), q0.5 (median forecast), and q0.9 (high estimate).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "series",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 5,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 13
+      },
+      "id": 109,
+      "options": {
+        "legend": {
+          "calcs": [
+            "last"
+          ],
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "10.4.7",
+      "targets": [
+        {
+          "columns": [
+            {
+              "selector": "time",
+              "text": "Time",
+              "type": "timestamp_epoch"
+            },
+            {
+              "selector": "value",
+              "text": "q0.10",
+              "type": "number"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "finops-infinity"
+          },
+          "filters": [],
+          "format": "timeseries",
+          "global_query_id": "",
+          "hide": false,
+          "parser": "backend",
+          "refId": "A",
+          "root_selector": "$map(\n  forecasts[metric.__name__ = \"cpu_total_cores_per_node_forecast\" and metric.quantile = \"0.10\" and metric.node = \"${node}\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
+          "source": "url",
+          "type": "json",
+          "url": "/metrics/${cluster}",
+          "url_options": {
+            "data": "",
+            "method": "GET"
+          }
+        },
+        {
+          "columns": [
+            {
+              "selector": "time",
+              "text": "Time",
+              "type": "timestamp_epoch"
+            },
+            {
+              "selector": "value",
+              "text": "q0.50",
+              "type": "number"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "finops-infinity"
+          },
+          "filters": [],
+          "format": "timeseries",
+          "global_query_id": "",
+          "hide": false,
+          "parser": "backend",
+          "refId": "B",
+          "root_selector": "$map(\n  forecasts[metric.__name__ = \"cpu_total_cores_per_node_forecast\" and metric.quantile = \"0.50\" and metric.node = \"${node}\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
+          "source": "url",
+          "type": "json",
+          "url": "/metrics/${cluster}",
+          "url_options": {
+            "data": "",
+            "method": "GET"
+          }
+        },
+        {
+          "columns": [
+            {
+              "selector": "time",
+              "text": "Time",
+              "type": "timestamp_epoch"
+            },
+            {
+              "selector": "value",
+              "text": "q0.90",
+              "type": "number"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "finops-infinity"
+          },
+          "filters": [],
+          "format": "timeseries",
+          "global_query_id": "",
+          "hide": false,
+          "parser": "backend",
+          "refId": "C",
+          "root_selector": "$map(\n  forecasts[metric.__name__ = \"cpu_total_cores_per_node_forecast\" and metric.quantile = \"0.90\" and metric.node = \"${node}\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i],\n          \"node\":  metric.node\n        }\n      }\n    )\n  }\n)[*]",
+          "source": "url",
+          "type": "json",
+                    "url": "/metrics/${cluster}",
+          "url_options": {
+            "data": "",
+            "method": "GET"
+          }
+        }
+      ],
+      "title": "Node CPU Cores Forecast",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "finops-infinity"
+      },
+      "description": "Forecasted CPU utilization percentage per node with confidence intervals. Shows q0.1 (low utilization), q0.5 (median forecast), and q0.9 (high utilization).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "series",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 5,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 25
+      },
+      "id": 107,
+      "options": {
+        "legend": {
+          "calcs": [
+            "last"
+          ],
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "10.4.7",
+      "targets": [
+        {
+          "columns": [
+            {
+              "selector": "time",
+              "text": "Time",
+              "type": "timestamp_epoch"
+            },
+            {
+              "selector": "value",
+              "text": "q0.10",
+              "type": "number"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "finops-infinity"
+          },
+          "filters": [],
+          "format": "timeseries",
+          "global_query_id": "",
+          "hide": false,
+          "parser": "backend",
+          "refId": "A",
+          "root_selector": "$map(\n  forecasts[metric.__name__ = \"cpu_pct_per_node_forecast\" and metric.quantile = \"0.10\" and metric.node = \"${node}\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
+          "source": "url",
+          "type": "json",
+          "url": "/metrics/${cluster}",
+          "url_options": {
+            "data": "",
+            "method": "GET"
+          }
+        },
+        {
+          "columns": [
+            {
+              "selector": "time",
+              "text": "Time",
+              "type": "timestamp_epoch"
+            },
+            {
+              "selector": "value",
+              "text": "q0.50",
+              "type": "number"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "finops-infinity"
+          },
+          "filters": [],
+          "format": "timeseries",
+          "global_query_id": "",
+          "hide": false,
+          "parser": "backend",
+          "refId": "B",
+          "root_selector": "$map(\n  forecasts[metric.__name__ = \"cpu_pct_per_node_forecast\" and metric.quantile = \"0.50\" and metric.node = \"${node}\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
+          "source": "url",
+          "type": "json",
+          "url": "/metrics/${cluster}",
+          "url_options": {
+            "data": "",
+            "method": "GET"
+          }
+        },
+        {
+          "columns": [
+            {
+              "selector": "time",
+              "text": "Time",
+              "type": "timestamp_epoch"
+            },
+            {
+              "selector": "value",
+              "text": "q0.90",
+              "type": "number"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "finops-infinity"
+          },
+          "filters": [],
+          "format": "timeseries",
+          "global_query_id": "",
+          "hide": false,
+          "parser": "backend",
+          "refId": "C",
+          "root_selector": "$map(\n  forecasts[metric.__name__ = \"cpu_pct_per_node_forecast\" and metric.quantile = \"0.90\" and metric.node = \"${node}\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
+          "source": "url",
+          "type": "json",
+          "url": "/metrics/${cluster}",
+          "url_options": {
+            "data": "",
+            "method": "GET"
+          }
+        }
+      ],
+      "title": "Node CPU Utilisation Forecast",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "finops-infinity"
+      },
+      "description": "Forecasted memory utilization percentage per node with confidence intervals. Shows q0.1 (low usage), q0.5 (median forecast), and q0.9 (high usage).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "series",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 5,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 37
+      },
+      "id": 108,
+      "options": {
+        "legend": {
+          "calcs": [
+            "last"
+          ],
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "10.4.7",
+      "targets": [
+        {
+          "columns": [
+            {
+              "selector": "time",
+              "text": "Time",
+              "type": "timestamp_epoch"
+            },
+            {
+              "selector": "value",
+              "text": "q0.10",
+              "type": "number"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "finops-infinity"
+          },
+          "filters": [],
+          "format": "timeseries",
+          "global_query_id": "",
+          "hide": false,
+          "parser": "backend",
+          "refId": "A",
+          "root_selector": "$map(\n  forecasts[metric.__name__ = \"mem_pct_per_node_forecast\" and metric.quantile = \"0.10\" and metric.node = \"${node}\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
+          "source": "url",
+          "type": "json",
+          "url": "/metrics/${cluster}",
+          "url_options": {
+            "data": "",
+            "method": "GET"
+          }
+        },
+        {
+          "columns": [
+            {
+              "selector": "time",
+              "text": "Time",
+              "type": "timestamp_epoch"
+            },
+            {
+              "selector": "value",
+              "text": "q0.50",
+              "type": "number"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "finops-infinity"
+          },
+          "filters": [],
+          "format": "timeseries",
+          "global_query_id": "",
+          "hide": false,
+          "parser": "backend",
+          "refId": "B",
+          "root_selector": "$map(\n  forecasts[metric.__name__ = \"mem_pct_per_node_forecast\" and metric.quantile = \"0.50\" and metric.node = \"${node}\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
+          "source": "url",
+          "type": "json",
+          "url": "/metrics/${cluster}",
+          "url_options": {
+            "data": "",
+            "method": "GET"
+          }
+        },
+        {
+          "columns": [
+            {
+              "selector": "time",
+              "text": "Time",
+              "type": "timestamp_epoch"
+            },
+            {
+              "selector": "value",
+              "text": "q0.90",
+              "type": "number"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "finops-infinity"
+          },
+          "filters": [],
+          "format": "timeseries",
+          "global_query_id": "",
+          "hide": false,
+          "parser": "backend",
+          "refId": "C",
+          "root_selector": "$map(\n  forecasts[metric.__name__ = \"mem_pct_per_node_forecast\" and metric.quantile = \"0.90\" and metric.node = \"${node}\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
+          "source": "url",
+          "type": "json",
+          "url": "/metrics/${cluster}",
+          "url_options": {
+            "data": "",
+            "method": "GET"
+          }
+        }
+      ],
+      "title": "Node Memory Utilisation Forecast",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 49
+      },
+      "id": 100,
+      "panels": [],
+      "title": "Cluster-Level Forecasts",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "finops-infinity"
+      },
+      "description": "Forecasted hourly cost at cluster level with confidence intervals. Shows q0.1 (optimistic), q0.5 (median forecast), and q0.9 (pessimistic) cost predictions.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "series",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 5,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "unit": "currencyUSD"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 50
+      },
+      "id": 106,
+      "options": {
+        "legend": {
+          "calcs": [
+            "last"
+          ],
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "10.4.7",
+      "targets": [
+        {
+          "columns": [
+            {
+              "selector": "time",
+              "text": "Time",
+              "type": "timestamp_epoch"
+            },
+            {
+              "selector": "value",
+              "text": "q0.10",
+              "type": "number"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "finops-infinity"
+          },
+          "filters": [],
+          "format": "timeseries",
+          "global_query_id": "",
+          "hide": false,
+          "parser": "backend",
+          "refId": "A",
+          "root_selector": "$map(\n  forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\" and metric.quantile = \"0.10\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
+          "source": "url",
+          "type": "json",
+          "url": "/metrics/${cluster}",
+          "url_options": {
+            "data": "",
+            "method": "GET"
+          }
+        },
+        {
+          "columns": [
+            {
+              "selector": "time",
+              "text": "Time",
+              "type": "timestamp_epoch"
+            },
+            {
+              "selector": "value",
+              "text": "q0.50",
+              "type": "number"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "finops-infinity"
+          },
+          "filters": [],
+          "format": "timeseries",
+          "global_query_id": "",
+          "hide": false,
+          "parser": "backend",
+          "refId": "B",
+          "root_selector": "$map(\n  forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\" and metric.quantile = \"0.50\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
+          "source": "url",
+          "type": "json",
+          "url": "/metrics/${cluster}",
+          "url_options": {
+            "data": "",
+            "method": "GET"
+          }
+        },
+        {
+          "columns": [
+            {
+              "selector": "time",
+              "text": "Time",
+              "type": "timestamp_epoch"
+            },
+            {
+              "selector": "value",
+              "text": "q0.90",
+              "type": "number"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "finops-infinity"
+          },
+          "filters": [],
+          "format": "timeseries",
+          "global_query_id": "",
+          "hide": false,
+          "parser": "backend",
+          "refId": "C",
+          "root_selector": "$map(\n  forecasts[metric.__name__ = \"cost_usd_per_cluster_forecast\" and metric.quantile = \"0.90\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
+          "source": "url",
+          "type": "json",
+          "url": "/metrics/${cluster}",
+          "url_options": {
+            "data": "",
+            "method": "GET"
+          }
+        }
+      ],
+      "title": "Cluster Hourly Cost Forecast",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "finops-infinity"
+      },
+      "description": "Forecasted CPU utilization percentage at cluster level with confidence intervals. Shows q0.1 (low utilization), q0.5 (median forecast), and q0.9 (high utilization).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "series",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 5,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 24,
+        "x": 0,
+        "y": 62
+      },
+      "id": 102,
+      "options": {
+        "legend": {
+          "calcs": [
+            "last"
+          ],
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "10.4.7",
+      "targets": [
+        {
+          "columns": [
+            {
+              "selector": "time",
+              "text": "Time",
+              "type": "timestamp_epoch"
+            },
+            {
+              "selector": "value",
+              "text": "q0.10",
+              "type": "number"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "finops-infinity"
+          },
+          "filters": [],
+          "format": "timeseries",
+          "global_query_id": "",
+          "hide": false,
+          "parser": "backend",
+          "refId": "A",
+          "root_selector": "$map(\n  forecasts[metric.__name__ = \"cpu_pct_per_cluster_forecast\" and metric.quantile = \"0.10\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
+          "source": "url",
+          "type": "json",
+          "url": "/metrics/${cluster}",
+          "url_options": {
+            "data": "",
+            "method": "GET"
+          }
+        },
+        {
+          "columns": [
+            {
+              "selector": "time",
+              "text": "Time",
+              "type": "timestamp_epoch"
+            },
+            {
+              "selector": "value",
+              "text": "q0.10",
+              "type": "number"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "finops-infinity"
+          },
+          "filters": [],
+          "format": "timeseries",
+          "global_query_id": "",
+          "hide": false,
+          "parser": "backend",
+          "refId": "B",
+          "root_selector": "$map(\n  forecasts[metric.__name__ = \"cpu_pct_per_cluster_forecast\" and metric.quantile = \"0.50\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
+          "source": "url",
+          "type": "json",
+          "url": "/metrics/${cluster}",
+          "url_options": {
+            "data": "",
+            "method": "GET"
+          }
+        },
+        {
+          "columns": [
+            {
+              "selector": "time",
+              "text": "Time",
+              "type": "timestamp_epoch"
+            },
+            {
+              "selector": "value",
+              "text": "q0.10",
+              "type": "number"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "finops-infinity"
+          },
+          "filters": [],
+          "format": "timeseries",
+          "global_query_id": "",
+          "hide": false,
+          "parser": "backend",
+          "refId": "C",
+          "root_selector": "$map(\n  forecasts[metric.__name__ = \"cpu_pct_per_cluster_forecast\" and metric.quantile = \"0.90\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
+          "source": "url",
+          "type": "json",
+          "url": "/metrics/${cluster}",
+          "url_options": {
+            "data": "",
+            "method": "GET"
+          }
+        }
+      ],
+      "title": "Cluster CPU Utlisation ",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "finops-infinity"
+      },
+      "description": "Forecasted memory utilization percentage at cluster level with confidence intervals. Shows q0.1 (low usage), q0.5 (median forecast), and q0.9 (high usage) predictions.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "series",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 5,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 24,
+        "x": 0,
+        "y": 73
+      },
+      "id": 104,
+      "options": {
+        "legend": {
+          "calcs": [
+            "last"
+          ],
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "10.4.7",
+      "targets": [
+        {
+          "columns": [
+            {
+              "selector": "time",
+              "text": "Time",
+              "type": "timestamp_epoch"
+            },
+            {
+              "selector": "value",
+              "text": "q0.10",
+              "type": "number"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "finops-infinity"
+          },
+          "filters": [],
+          "format": "timeseries",
+          "global_query_id": "",
+          "hide": false,
+          "parser": "backend",
+          "refId": "A",
+          "root_selector": "$map(\n  forecasts[metric.__name__ = \"mem_pct_per_cluster_forecast\" and metric.quantile = \"0.10\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
+          "source": "url",
+          "type": "json",
+          "url": "/metrics/${cluster}",
+          "url_options": {
+            "data": "",
+            "method": "GET"
+          }
+        },
+        {
+          "columns": [
+            {
+              "selector": "time",
+              "text": "Time",
+              "type": "timestamp_epoch"
+            },
+            {
+              "selector": "value",
+              "text": "q0.50",
+              "type": "number"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "finops-infinity"
+          },
+          "filters": [],
+          "format": "timeseries",
+          "global_query_id": "",
+          "hide": false,
+          "parser": "backend",
+          "refId": "B",
+          "root_selector": "$map(\n  forecasts[metric.__name__ = \"mem_pct_per_cluster_forecast\" and metric.quantile = \"0.50\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
+          "source": "url",
+          "type": "json",
+          "url": "/metrics/${cluster}",
+          "url_options": {
+            "data": "",
+            "method": "GET"
+          }
+        },
+        {
+          "columns": [
+            {
+              "selector": "time",
+              "text": "Time",
+              "type": "timestamp_epoch"
+            },
+            {
+              "selector": "value",
+              "text": "q0.90",
+              "type": "number"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "finops-infinity"
+          },
+          "filters": [],
+          "format": "timeseries",
+          "global_query_id": "",
+          "hide": false,
+          "parser": "backend",
+          "refId": "C",
+          "root_selector": "$map(\n  forecasts[metric.__name__ = \"mem_pct_per_cluster_forecast\" and metric.quantile = \"0.90\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
+          "source": "url",
+          "type": "json",
+          "url": "/metrics/${cluster}",
+          "url_options": {
+            "data": "",
+            "method": "GET"
+          }
+        }
+      ],
+      "title": "Memroy Utlisation ",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "finops-infinity"
+      },
+      "description": "Forecasted number of nodes per cluster with confidence intervals. Shows q0.1 (minimum nodes), q0.5 (median forecast), and q0.9 (maximum nodes) predictions.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "series",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 5,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 24,
+        "x": 0,
+        "y": 84
+      },
+      "id": 103,
+      "options": {
+        "legend": {
+          "calcs": [
+            "last"
+          ],
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "10.4.7",
+      "targets": [
+        {
+          "columns": [
+            {
+              "selector": "time",
+              "text": "Time",
+              "type": "timestamp_epoch"
+            },
+            {
+              "selector": "value",
+              "text": "q0.10",
+              "type": "number"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "finops-infinity"
+          },
+          "filters": [],
+          "format": "timeseries",
+          "global_query_id": "",
+          "hide": false,
+          "parser": "backend",
+          "refId": "A",
+          "root_selector": "$map(\n  forecasts[metric.__name__ = \"node_count_per_cluster_forecast\" and metric.quantile = \"0.10\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
+          "source": "url",
+          "type": "json",
+          "url": "/metrics/${cluster}",
+          "url_options": {
+            "data": "",
+            "method": "GET"
+          }
+        },
+        {
+          "columns": [
+            {
+              "selector": "time",
+              "text": "Time",
+              "type": "timestamp_epoch"
+            },
+            {
+              "selector": "value",
+              "text": "q0.50",
+              "type": "number"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "finops-infinity"
+          },
+          "filters": [],
+          "format": "timeseries",
+          "global_query_id": "",
+          "hide": false,
+          "parser": "backend",
+          "refId": "B",
+          "root_selector": "$map(\n  forecasts[metric.__name__ = \"node_count_per_cluster_forecast\" and metric.quantile = \"0.50\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
+          "source": "url",
+          "type": "json",
+          "url": "/metrics/${cluster}",
+          "url_options": {
+            "data": "",
+            "method": "GET"
+          }
+        },
+        {
+          "columns": [
+            {
+              "selector": "time",
+              "text": "Time",
+              "type": "timestamp_epoch"
+            },
+            {
+              "selector": "value",
+              "text": "q0.90",
+              "type": "number"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "finops-infinity"
+          },
+          "filters": [],
+          "format": "timeseries",
+          "global_query_id": "",
+          "hide": false,
+          "parser": "backend",
+          "refId": "C",
+          "root_selector": "$map(\n  forecasts[metric.__name__ = \"node_count_per_cluster_forecast\" and metric.quantile = \"0.90\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
+          "source": "url",
+          "type": "json",
+          "url": "/metrics/${cluster}",
+          "url_options": {
+            "data": "",
+            "method": "GET"
+          }
+        }
+      ],
+      "title": "Node Count Per Cluster ",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "finops-infinity"
+      },
+      "description": "Forecasted total memory utilization per cluster with confidence intervals. Shows q0.1 (low utilization), q0.5 (median forecast), and q0.9 (high utilization) predictions.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "series",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 5,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "unit": "decgbytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 24,
+        "x": 0,
+        "y": 95
+      },
+      "id": 105,
+      "options": {
+        "legend": {
+          "calcs": [
+            "last"
+          ],
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "10.4.7",
+      "targets": [
+        {
+          "columns": [
+            {
+              "selector": "time",
+              "text": "Time",
+              "type": "timestamp_epoch"
+            },
+            {
+              "selector": "value",
+              "text": "q0.10",
+              "type": "number"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "finops-infinity"
+          },
+          "filters": [],
+          "format": "timeseries",
+          "global_query_id": "",
+          "hide": false,
+          "parser": "backend",
+          "refId": "A",
+          "root_selector": "$map(\n  forecasts[metric.__name__ = \"mem_total_gb_per_cluster_forecast\" and metric.quantile = \"0.10\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
+          "source": "url",
+          "type": "json",
+          "url": "/metrics/${cluster}",
+          "url_options": {
+            "data": "",
+            "method": "GET"
+          }
+        },
+        {
+          "columns": [
+            {
+              "selector": "time",
+              "text": "Time",
+              "type": "timestamp_epoch"
+            },
+            {
+              "selector": "value",
+              "text": "q0.50",
+              "type": "number"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "finops-infinity"
+          },
+          "filters": [],
+          "format": "timeseries",
+          "global_query_id": "",
+          "hide": false,
+          "parser": "backend",
+          "refId": "B",
+          "root_selector": "$map(\n  forecasts[metric.__name__ = \"mem_total_gb_per_cluster_forecast\" and metric.quantile = \"0.50\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
+          "source": "url",
+          "type": "json",
+          "url": "/metrics/${cluster}",
+          "url_options": {
+            "data": "",
+            "method": "GET"
+          }
+        },
+        {
+          "columns": [
+            {
+              "selector": "time",
+              "text": "Time",
+              "type": "timestamp_epoch"
+            },
+            {
+              "selector": "value",
+              "text": "q0.90",
+              "type": "number"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "finops-infinity"
+          },
+          "filters": [],
+          "format": "timeseries",
+          "global_query_id": "",
+          "hide": false,
+          "parser": "backend",
+          "refId": "C",
+          "root_selector": "$map(\n  forecasts[metric.__name__ = \"mem_total_gb_per_cluster_forecast\" and metric.quantile = \"0.90\"],\nfunction ($f) {\n    $map(\n      $f.timestamps,\n      function ($t, $i) {\n        {\n          \"time\":  $t,\n          \"value\": $f.values[$i]\n        }\n      }\n    )\n  }\n)[*]",
+          "source": "url",
+          "type": "json",
+          "url": "/metrics/${cluster}",
+          "url_options": {
+            "data": "",
+            "method": "GET"
+          }
+        }
+      ],
+      "title": "Total Memory Utilization Per Cluster",
+      "transparent": true,
+      "type": "timeseries"
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": [
+    "forecasting",
+    "optimization"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "",
+          "value": ""
+        },
+        "datasource": {
+          "type": "yesoreyeram-infinity-datasource",
+          "uid": "finops-infinity"
+        },
+        "definition": "",
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "name": "cluster",
+        "options": [],
+        "query": {
+          "infinityQuery": {
+            "columns": [],
+            "filters": [],
+            "format": "table",
+            "parser": "backend",
+            "refId": "variable",
+            "source": "url",
+            "type": "uql",
+            "uql": "parse-json | mv-expand \"clusters\" | project \"clusters\"",
+            "url": "/clusters",
+            "url_options": {
+              "data": "",
+              "method": "GET"
+            }
+          },
+          "query": "",
+          "queryType": "infinity"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "",
+          "value": ""
+        },
+        "datasource": {
+          "type": "yesoreyeram-infinity-datasource",
+          "uid": "finops-infinity"
+        },
+        "definition": "",
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "name": "node",
+        "options": [],
+        "query": {
+          "infinityQuery": {
+            "columns": [],
+            "filters": [],
+            "format": "table",
+            "parser": "backend",
+            "refId": "variable",
+            "source": "url",
+            "type": "uql",
+            "uql": "parse-json | jsonata \"$distinct($.forecasts[metric.node!='cluster-aggregate'].metric.node)\"",
+            "url": "/metrics/${cluster}",
+            "url_options": {
+              "data": "",
+              "method": "GET"
+            }
+          },
+          "query": "",
+          "queryType": "infinity"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now",
+    "to": "now+7d"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Forecasting Dashboard",
+  "uid": "finops-forecasting-dashboard",
+  "version": 1,
+  "weekStart": ""
+}

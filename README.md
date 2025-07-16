@@ -1,4 +1,4 @@
-# Forecasting Agent
+# FinOps Agent
 
 FinOps forecasting agent that ingests Kubernetes cost/utilization metrics from Prometheus and generates forecasts using Datadog's TOTO zero-shot model. 
 
@@ -52,6 +52,9 @@ forecasting-agent/
 The `toto/` folder contains utility code directly from upstream [Datadog/Toto](https://github.com/Datadog/TOTO) repository. This provides the necessary utilities and helper functions to leverage the TOTO zero-shot forecasting model, including tensor operations, data preprocessing, and model inference capabilities.
 
 ## Quick Start
+#### Prerequisites
+
+- Access to a Prometheus instance or Prometheus compatible endpoint for fetching metrics.
 
 ### Docker Deployment
 
@@ -83,6 +86,33 @@ PYTHONPATH=src pdm run python -m forecasting_agent.main config.yaml
 PYTHONPATH=src pdm run python -m debugpy --listen 5678 --wait-for-client -m forecasting_agent.main config.yaml
 ```
 
+### Helm
+
+```bash
+# Install FinOps Agent using Helm chart
+helm install finops-agent ./helm
+
+# Install in specific namespace
+helm install finops-agent ./helm --namespace finops --create-namespace
+
+# Install with custom Prometheus URL
+helm install finops-agent ./helm \
+  --set config.collector.url=http://your-prometheus:9090
+```
+#### Grafana Dashboard
+
+The Helm chart includes a bundled Grafana instance with pre-configured forecasting dashboards.
+
+* Port forward to access Grafana UI
+kubectl port-forward service/finops-agent-grafana 3001:3001
+
+`
+Default: Go to http://localhost:3001 - {user: admin, pass: finops123}
+`
+
+Dashboard Features
+- 9 forecasting panels (4 node-level + 5 cluster-level)
+- 7-day forecast horizon
 
 ## Configuration
 
