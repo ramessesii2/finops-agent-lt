@@ -1,0 +1,19 @@
+{{- if .Values.grafana.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "finops-agent.fullname" . }}-grafana
+  labels:
+    {{- include "finops-agent.labels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+spec:
+  type: {{ .Values.grafana.service.type }}
+  ports:
+    - port: {{ .Values.grafana.service.port }}
+      targetPort: {{ .Values.grafana.service.targetPort }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "finops-agent.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+{{- end }}

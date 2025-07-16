@@ -49,6 +49,10 @@ affinity: {}
 
 # Configuration for the finops-agent
 config:
+  # Agent configuration
+  agent:
+    interval: 300  # seconds between forecast updates
+  
   # Collector configuration
   collector:
     type: prometheus
@@ -92,3 +96,45 @@ config:
     port: 8081
     host: "0.0.0.0"
     path: /metrics
+
+# Grafana dashboard configuration
+grafana:
+  enabled: true
+  image:
+    repository: grafana/grafana
+    tag: "10.4.7"
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 3001
+    targetPort: 3000
+  
+  # Grafana configuration
+  config:
+    server:
+      http_port: 3000
+    security:
+      admin_user: admin
+      admin_password: finops123  # CAUTION
+    
+  # Dashboard configuration
+  dashboard:
+    # Variables for the dashboard
+    variables:
+      cluster:
+        path: "/clusters"
+        uql: |
+          parse-json
+          | mv-expand "clusters"
+          | project "clusters"
+      node:
+        path: "/metrics/{clusters}"
+        uql: |
+          parse-json
+          | jsonata "$distinct($.forecasts[metric.node!='cluster-aggregate'].metric.node)"
+  
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
