@@ -80,6 +80,13 @@ config:
     min_confidence: 0.8
     lookback_days: 7      # Days to analyze for optimization
 
+  # Validation configuration
+  validation:
+    enabled: false
+    interval_cycles: 2  # Run validation every 2 forecast cycles
+    train_ratio: 0.7    # Use 70% for training, 30% for testing
+    log_level: INFO
+
   # Metrics configuration
   metrics:
     port: 8081

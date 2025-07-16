@@ -5,9 +5,7 @@ metadata:
   labels:
     {{- include "finops-agent.labels" . | nindent 4 }}
 spec:
-  {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
-  {{- end }}
   selector:
     matchLabels:
       {{- include "finops-agent.selectorLabels" . | nindent 6 }}

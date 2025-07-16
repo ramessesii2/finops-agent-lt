@@ -38,6 +38,13 @@ data:
       min_confidence: {{ .Values.config.optimizer.min_confidence }}
       lookback_days: {{ .Values.config.optimizer.lookback_days }}
 
+    # Validation configuration
+    validation:
+      enabled: {{ .Values.config.validation.enabled }}
+      interval_cycles: {{ .Values.config.validation.interval_cycles }}
+      train_ratio: {{ .Values.config.validation.train_ratio }}
+      log_level: {{ .Values.config.validation.log_level }}
+
     # Metrics configuration
     metrics:
       port: {{ .Values.config.metrics.port }}
