@@ -52,16 +52,19 @@ jobs:
         echo "Updating charts to version: $VERSION"
 
         # Update helm-standalone chart
-        sed -i "s/version: .*/version: $VERSION/" deployments/helm-standalone/Chart.yaml
-        sed -i "s/appVersion: .*/appVersion: \"$VERSION\"/" deployments/helm-standalone/Chart.yaml
+        sed -i "s/^version: .*/version: $VERSION/" deployments/helm-standalone/Chart.yaml
+        sed -i "s/^appVersion: .*/appVersion: \"$VERSION\"/" deployments/helm-standalone/Chart.yaml
 
         # Update helm-for-kof chart
-        sed -i "s/version: .*/version: $VERSION/" deployments/helm-for-kof/Chart.yaml
-        sed -i "s/appVersion: .*/appVersion: \"$VERSION\"/" deployments/helm-for-kof/Chart.yaml
+        sed -i "s/^version: .*/version: $VERSION/" deployments/helm-for-kof/Chart.yaml
+        sed -i "s/^appVersion: .*/appVersion: \"$VERSION\"/" deployments/helm-for-kof/Chart.yaml
 
     - name: Package Helm Charts
       run: |
         mkdir -p charts
+
+        # Remove stale lock so Helm resolves OCI dependency afresh
+        rm -f deployments/helm-for-kof/Chart.lock
 
         # Package helm-standalone
         helm package deployments/helm-standalone -d charts --dependency-update
