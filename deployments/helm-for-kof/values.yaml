@@ -95,6 +95,9 @@ grafana:
   enabled: true
   # GrafanaDasboard Namespace has to be the same as the kof GrafanaDashboards Namespace
   dashboardNamespace: "kof"  # Namespace for GrafanaDashboard CRD
+  # If true, chart will create the dashboard namespace above.
+  # Leave false if namespace is managed externally (recommended).
+  createDashboardNamespace: false
   dashboardLabels:                     # Labels for GrafanaDashboard CRD
     app: grafana
   dashboardFolder: "General"   # kof-grafana-dashboard default folder
@@ -103,4 +106,4 @@ grafana:
 
 # Optional: install Grafana Operator via subchart
 grafanaOperator:
-  enabled: true
+  enabled: false

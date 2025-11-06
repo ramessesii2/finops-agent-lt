@@ -24,6 +24,6 @@ annotations:
   category: Analytics
 dependencies:
   - name: grafana-operator
-    repository: https://grafana-operator.github.io/grafana-operator
+    repository: https://grafana.github.io/helm-charts
     version: "5.18.0"
     condition: grafanaOperator.enabled

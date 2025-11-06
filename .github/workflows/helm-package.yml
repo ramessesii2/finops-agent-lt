@@ -64,10 +64,10 @@ jobs:
         mkdir -p charts
 
         # Package helm-standalone
-        helm package deployments/helm-standalone -d charts
+        helm package deployments/helm-standalone -d charts --dependency-update
 
         # Package helm-for-kof
-        helm package deployments/helm-for-kof -d charts
+        helm package deployments/helm-for-kof -d charts --dependency-update
 
         ls -la charts/
 

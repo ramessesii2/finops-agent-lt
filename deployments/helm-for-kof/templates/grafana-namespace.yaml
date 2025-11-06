@@ -1,0 +1,8 @@
+{{- if and .Values.grafana.enabled .Values.grafana.createDashboardNamespace }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.grafana.dashboardNamespace | quote }}
+{{- end }}
+
+
