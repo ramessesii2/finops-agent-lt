@@ -136,25 +136,6 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-# Archive files
-*.tar
-*.tar.gz
-*.tar.bz2
-*.tar.xz
-*.tgz
-*.tbz2
-*.txz
-*.zip
-*.rar
-*.7z
-*.gz
-*.bz2
-*.xz
-
-# Helm charts and packages
-*.tgz
-*.tar.gz
-
 # OS generated files
 .DS_Store
 .DS_Store?
