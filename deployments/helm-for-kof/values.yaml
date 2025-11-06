@@ -1,13 +1,8 @@
-# Default values for finops-agent.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
-
 replicaCount: 1
 
 image:
   repository: ghcr.io/mirantis/finops-agent
   pullPolicy: Always
-  # Overrides the image tag whose default is the chart appVersion.
   tag: "latest"
 
 imagePullSecrets: []
@@ -45,7 +40,7 @@ affinity: {}
 config:
   # Agent configuration
   agent:
-    interval: 3600  # seconds between forecast updates
+    interval: 50000  # seconds between forecast updates
   # Collector configuration
   collector:
     type: prometheus
@@ -64,7 +59,7 @@ config:
     quantiles: [0.1, 0.5, 0.9]
     toto:
       checkpoint: Datadog/Toto-Open-Base-1.0
-      device: cuda              # or gpu
+      device: cpu              # or gpu
       context_length: 4096
       num_samples: 256
       compile: true
