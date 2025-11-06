@@ -2,8 +2,8 @@ apiVersion: v2
 name: finops-agent-kof
 description: Helm chart for FinOps Agent for KOF
 type: application
-version: 0.1.3
-appVersion: "0.1.3"
+version: 0.1.4
+appVersion: "0.1.4"
 home: https://github.com/mirantis/finops-agent
 sources:
   - https://github.com/mirantis/finops-agent
@@ -22,3 +22,8 @@ keywords:
   - KOF
 annotations:
   category: Analytics
+dependencies:
+  - name: grafana-operator
+    repository: https://grafana-operator.github.io/grafana-operator
+    version: "5.18.0"
+    condition: grafanaOperator.enabled

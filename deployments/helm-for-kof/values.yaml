@@ -100,3 +100,7 @@ grafana:
   dashboardFolder: "General"   # kof-grafana-dashboard default folder
   # Note: Grafana Infinity plugin v3.4.1 must be manually installed
   # in the KOF Grafana instance for dashboards to work properly
+
+# Optional: install Grafana Operator via subchart
+grafanaOperator:
+  enabled: true
